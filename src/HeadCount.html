@@ -10,17 +10,20 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow: auto;
             background-color: #f0f0f0;
             position: relative;
         }
+        .container {
+            position: relative;
+            min-width: 100vw;
+            min-height: 100vh;
+        }
         .shape {
             width: 150px;
-            height: 150px;
+            height: 100px;
             background-color: steelblue;
-            border-radius: 50%;
+            border-radius: 15px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -32,7 +35,7 @@
             user-select: none;
         }
         .controls {
-            position: absolute;
+            position: fixed;
             top: 10px;
             right: 10px;
             background: white;
@@ -44,27 +47,28 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
             pointer-events: none;
         }
     </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<div class="controls">
-    <select id="shapeSelect"></select>
-    <button onclick="addShape()">Додати фігуру</button>
+<div class="container" id="container">
+    <canvas id="canvas"></canvas>
+    <div class="controls">
+        <select id="shapeSelect"></select>
+        <button onclick="addShape()">Додати фігуру</button>
+    </div>
+    <div class="shape" id="1" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">id_фігури_1</div>
 </div>
-<div class="shape" id="1" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">id_фігури_1</div>
 
 <script>
     let shapeCount = 1;
     const shapes = { 1: document.getElementById("1") };
-    const connections = {}; // Збереження зв'язків між фігурами
+    const connections = {};
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const shapeSelect = document.getElementById("shapeSelect");
+    const container = document.getElementById("container");
 
     function updateShapeList() {
         shapeSelect.innerHTML = "";
@@ -85,11 +89,10 @@
         newShape.textContent = `id_фігури_${shapeCount}`;
         newShape.style.top = `${Math.random() * 80 + 10}%`;
         newShape.style.left = `${Math.random() * 80 + 10}%`;
-        document.body.appendChild(newShape);
+        container.appendChild(newShape);
         shapes[shapeCount] = newShape;
         makeDraggable(newShape);
 
-        // Зв'язуємо нову фігуру з вибраною у списку
         let parentId = shapeSelect.value;
         if (!connections[parentId]) connections[parentId] = [];
         connections[parentId].push(shapeCount);
@@ -107,6 +110,7 @@
             function moveAt(pageX, pageY) {
                 shape.style.left = pageX - shiftX + 'px';
                 shape.style.top = pageY - shiftY + 'px';
+                adjustContainerSize(shape);
                 drawLines();
             }
 
@@ -119,6 +123,10 @@
             shape.onmouseup = function () {
                 document.removeEventListener('mousemove', onMouseMove);
                 shape.onmouseup = null;
+                shape.style.left = shape.offsetLeft + 'px';
+                shape.style.top = shape.offsetTop + 'px';
+                adjustContainerSize(shape);
+                drawLines();
             };
         };
 
@@ -127,18 +135,32 @@
         };
     }
 
+    function adjustContainerSize(shape) {
+        let rect = shape.getBoundingClientRect();
+        let containerRect = container.getBoundingClientRect();
+
+        let newWidth = Math.max(container.scrollWidth, rect.right + 50);
+        let newHeight = Math.max(container.scrollHeight, rect.bottom + 50);
+
+        container.style.minWidth = newWidth + 'px';
+        container.style.minHeight = newHeight + 'px';
+    }
+
     function drawLines() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = container.scrollWidth;
+        canvas.height = container.scrollHeight;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         for (let parentId in connections) {
             let parentShape = shapes[parentId].getBoundingClientRect();
             connections[parentId].forEach(childId => {
                 let childShape = shapes[childId].getBoundingClientRect();
+                let midX = (parentShape.left + childShape.left) / 2;
+                let midY = (parentShape.top + childShape.top) / 2 - 50;
+
                 ctx.beginPath();
                 ctx.moveTo(parentShape.left + parentShape.width / 2, parentShape.top + parentShape.height / 2);
-                ctx.lineTo(childShape.left + childShape.width / 2, childShape.top + childShape.height / 2);
+                ctx.quadraticCurveTo(midX, midY, childShape.left + childShape.width / 2, childShape.top + childShape.height / 2);
                 ctx.strokeStyle = "black";
                 ctx.lineWidth = 2;
                 ctx.stroke();
