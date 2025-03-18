@@ -28,6 +28,8 @@
             font-size: 20px;
             font-weight: bold;
             position: absolute;
+            cursor: grab;
+            user-select: none;
         }
         .controls {
             position: absolute;
@@ -59,6 +61,7 @@
 <script>
     let shapeCount = 1;
     const shapes = { 1: document.getElementById("1") };
+    const connections = {}; // Збереження зв'язків між фігурами
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const shapeSelect = document.getElementById("shapeSelect");
@@ -84,8 +87,44 @@
         newShape.style.left = `${Math.random() * 80 + 10}%`;
         document.body.appendChild(newShape);
         shapes[shapeCount] = newShape;
+        makeDraggable(newShape);
+
+        // Зв'язуємо нову фігуру з вибраною у списку
+        let parentId = shapeSelect.value;
+        if (!connections[parentId]) connections[parentId] = [];
+        connections[parentId].push(shapeCount);
+
         drawLines();
         updateShapeList();
+    }
+
+    function makeDraggable(shape) {
+        shape.onmousedown = function (event) {
+            let shiftX = event.clientX - shape.getBoundingClientRect().left;
+            let shiftY = event.clientY - shape.getBoundingClientRect().top;
+            shape.style.transform = "none";
+
+            function moveAt(pageX, pageY) {
+                shape.style.left = pageX - shiftX + 'px';
+                shape.style.top = pageY - shiftY + 'px';
+                drawLines();
+            }
+
+            function onMouseMove(event) {
+                moveAt(event.pageX, event.pageY);
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+
+            shape.onmouseup = function () {
+                document.removeEventListener('mousemove', onMouseMove);
+                shape.onmouseup = null;
+            };
+        };
+
+        shape.ondragstart = function () {
+            return false;
+        };
     }
 
     function drawLines() {
@@ -93,20 +132,21 @@
         canvas.height = window.innerHeight;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        for (let id in shapes) {
-            let parentId = shapeSelect.value;
-            if (id !== parentId) {
-                let shapeA = shapes[parentId].getBoundingClientRect();
-                let shapeB = shapes[id].getBoundingClientRect();
+        for (let parentId in connections) {
+            let parentShape = shapes[parentId].getBoundingClientRect();
+            connections[parentId].forEach(childId => {
+                let childShape = shapes[childId].getBoundingClientRect();
                 ctx.beginPath();
-                ctx.moveTo(shapeA.left + shapeA.width / 2, shapeA.top + shapeA.height / 2);
-                ctx.lineTo(shapeB.left + shapeB.width / 2, shapeB.top + shapeB.height / 2);
+                ctx.moveTo(parentShape.left + parentShape.width / 2, parentShape.top + parentShape.height / 2);
+                ctx.lineTo(childShape.left + childShape.width / 2, childShape.top + childShape.height / 2);
                 ctx.strokeStyle = "black";
                 ctx.lineWidth = 2;
                 ctx.stroke();
-            }
+            });
         }
     }
+
+    makeDraggable(shapes[1]);
 </script>
 </body>
 </html>
