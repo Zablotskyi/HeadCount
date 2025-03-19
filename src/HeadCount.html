@@ -47,6 +47,8 @@
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
         }
     </style>
@@ -57,8 +59,9 @@
     <div class="controls">
         <select id="shapeSelect"></select>
         <button onclick="addShape()">Додати фігуру</button>
+        <button onclick="undoShape()">Undo</button>
     </div>
-    <div class="shape" id="1" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">id_фігури_1</div>
+    <div class="shape" id="1" style="top: 50%; left: 50%;">id_фігури_1</div>
 </div>
 
 <script>
@@ -101,16 +104,28 @@
         updateShapeList();
     }
 
+    function undoShape() {
+        if (shapeCount > 1) {
+            let lastShape = document.getElementById(shapeCount);
+            if (lastShape) {
+                lastShape.remove();
+                delete shapes[shapeCount];
+                shapeCount--;
+                drawLines();
+                updateShapeList();
+            }
+        }
+    }
+
     function makeDraggable(shape) {
         shape.onmousedown = function (event) {
-            let shiftX = event.clientX - shape.getBoundingClientRect().left;
-            let shiftY = event.clientY - shape.getBoundingClientRect().top;
-            shape.style.transform = "none";
+            let shiftX = event.clientX - shape.offsetLeft;
+            let shiftY = event.clientY - shape.offsetTop;
+            shape.style.cursor = "grabbing";
 
             function moveAt(pageX, pageY) {
-                shape.style.left = pageX - shiftX + 'px';
-                shape.style.top = pageY - shiftY + 'px';
-                adjustContainerSize(shape);
+                shape.style.left = `${pageX - shiftX}px`;
+                shape.style.top = `${pageY - shiftY}px`;
                 drawLines();
             }
 
@@ -123,9 +138,7 @@
             shape.onmouseup = function () {
                 document.removeEventListener('mousemove', onMouseMove);
                 shape.onmouseup = null;
-                shape.style.left = shape.offsetLeft + 'px';
-                shape.style.top = shape.offsetTop + 'px';
-                adjustContainerSize(shape);
+                shape.style.cursor = "grab";
                 drawLines();
             };
         };
@@ -135,32 +148,29 @@
         };
     }
 
-    function adjustContainerSize(shape) {
-        let rect = shape.getBoundingClientRect();
-        let containerRect = container.getBoundingClientRect();
-
-        let newWidth = Math.max(container.scrollWidth, rect.right + 50);
-        let newHeight = Math.max(container.scrollHeight, rect.bottom + 50);
-
-        container.style.minWidth = newWidth + 'px';
-        container.style.minHeight = newHeight + 'px';
-    }
-
     function drawLines() {
         canvas.width = container.scrollWidth;
         canvas.height = container.scrollHeight;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         for (let parentId in connections) {
-            let parentShape = shapes[parentId].getBoundingClientRect();
+            let parentShape = shapes[parentId];
+            if (!parentShape) continue;
+            let parentX = parentShape.offsetLeft + parentShape.offsetWidth / 2;
+            let parentY = parentShape.offsetTop + parentShape.offsetHeight / 2;
+
             connections[parentId].forEach(childId => {
-                let childShape = shapes[childId].getBoundingClientRect();
-                let midX = (parentShape.left + childShape.left) / 2;
-                let midY = (parentShape.top + childShape.top) / 2 - 50;
+                let childShape = shapes[childId];
+                if (!childShape) return;
+                let childX = childShape.offsetLeft + childShape.offsetWidth / 2;
+                let childY = childShape.offsetTop + childShape.offsetHeight / 2;
+
+                let midX = (parentX + childX) / 2;
+                let midY = (parentY + childY) / 2 - 50;
 
                 ctx.beginPath();
-                ctx.moveTo(parentShape.left + parentShape.width / 2, parentShape.top + parentShape.height / 2);
-                ctx.quadraticCurveTo(midX, midY, childShape.left + childShape.width / 2, childShape.top + childShape.height / 2);
+                ctx.moveTo(parentX, parentY);
+                ctx.quadraticCurveTo(midX, midY, childX, childY);
                 ctx.strokeStyle = "black";
                 ctx.lineWidth = 2;
                 ctx.stroke();
@@ -168,6 +178,7 @@
         }
     }
 
+    window.onresize = drawLines;
     makeDraggable(shapes[1]);
 </script>
 </body>
