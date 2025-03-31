@@ -1,185 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Full Screen Shape</title>
+    <title>HeadCount</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: #f0f0f0;
-            position: relative;
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 40px;
         }
-        .container {
-            position: relative;
-            min-width: 100vw;
-            min-height: 100vh;
+
+        .tree {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .shape {
+
+        .node {
             width: 150px;
-            height: 100px;
-            background-color: steelblue;
-            border-radius: 15px;
+            height: 60px;
+            border: 2px solid #333;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-            position: absolute;
-            cursor: grab;
-            user-select: none;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            background-color: #f0f0f0;
+            transition: background-color 0.3s;
         }
-        .controls {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-        }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+
+        .subordinates {
+            display: flex;
+            gap: 40px;
         }
     </style>
 </head>
 <body>
-<div class="container" id="container">
-    <canvas id="canvas"></canvas>
-    <div class="controls">
-        <select id="shapeSelect"></select>
-        <button onclick="addShape()">Додати фігуру</button>
-        <button onclick="undoShape()">Undo</button>
+<h1>HeadCount Відділ</h1>
+<button onclick="startHeadCount()">HeadCount</button>
+
+<div class="tree">
+    <div class="node" id="manager">Керівник</div>
+    <div class="subordinates">
+        <div class="node" id="emp1" onclick="confirmPresence('emp1')">Співробітник 1</div>
+        <div class="node" id="emp2" onclick="confirmPresence('emp2')">Співробітник 2</div>
+        <div class="node" id="emp3" onclick="confirmPresence('emp3')">Співробітник 3</div>
     </div>
-    <div class="shape" id="1" style="top: 50%; left: 50%;">id_фігури_1</div>
 </div>
 
 <script>
-    let shapeCount = 1;
-    const shapes = { 1: document.getElementById("1") };
-    const connections = {};
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const shapeSelect = document.getElementById("shapeSelect");
-    const container = document.getElementById("container");
+    function startHeadCount() {
+        ['emp1', 'emp2', 'emp3'].forEach(id => {
+            const el = document.getElementById(id);
+            el.style.backgroundColor = 'red';
+        });
+    }
 
-    function updateShapeList() {
-        shapeSelect.innerHTML = "";
-        for (let id in shapes) {
-            let option = document.createElement("option");
-            option.value = id;
-            option.textContent = `Фігура ${id}`;
-            shapeSelect.appendChild(option);
+    function confirmPresence(empId) {
+        const el = document.getElementById(empId);
+        if (el.style.backgroundColor === 'red') {
+            el.style.backgroundColor = 'green';
         }
     }
-    updateShapeList();
-
-    function addShape() {
-        shapeCount++;
-        let newShape = document.createElement("div");
-        newShape.classList.add("shape");
-        newShape.id = shapeCount;
-        newShape.textContent = `id_фігури_${shapeCount}`;
-        newShape.style.top = `${Math.random() * 80 + 10}%`;
-        newShape.style.left = `${Math.random() * 80 + 10}%`;
-        container.appendChild(newShape);
-        shapes[shapeCount] = newShape;
-        makeDraggable(newShape);
-
-        let parentId = shapeSelect.value;
-        if (!connections[parentId]) connections[parentId] = [];
-        connections[parentId].push(shapeCount);
-
-        drawLines();
-        updateShapeList();
-    }
-
-    function undoShape() {
-        if (shapeCount > 1) {
-            let lastShape = document.getElementById(shapeCount);
-            if (lastShape) {
-                lastShape.remove();
-                delete shapes[shapeCount];
-                shapeCount--;
-                drawLines();
-                updateShapeList();
-            }
-        }
-    }
-
-    function makeDraggable(shape) {
-        shape.onmousedown = function (event) {
-            let shiftX = event.clientX - shape.offsetLeft;
-            let shiftY = event.clientY - shape.offsetTop;
-            shape.style.cursor = "grabbing";
-
-            function moveAt(pageX, pageY) {
-                shape.style.left = `${pageX - shiftX}px`;
-                shape.style.top = `${pageY - shiftY}px`;
-                drawLines();
-            }
-
-            function onMouseMove(event) {
-                moveAt(event.pageX, event.pageY);
-            }
-
-            document.addEventListener('mousemove', onMouseMove);
-
-            shape.onmouseup = function () {
-                document.removeEventListener('mousemove', onMouseMove);
-                shape.onmouseup = null;
-                shape.style.cursor = "grab";
-                drawLines();
-            };
-        };
-
-        shape.ondragstart = function () {
-            return false;
-        };
-    }
-
-    function drawLines() {
-        canvas.width = container.scrollWidth;
-        canvas.height = container.scrollHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        for (let parentId in connections) {
-            let parentShape = shapes[parentId];
-            if (!parentShape) continue;
-            let parentX = parentShape.offsetLeft + parentShape.offsetWidth / 2;
-            let parentY = parentShape.offsetTop + parentShape.offsetHeight / 2;
-
-            connections[parentId].forEach(childId => {
-                let childShape = shapes[childId];
-                if (!childShape) return;
-                let childX = childShape.offsetLeft + childShape.offsetWidth / 2;
-                let childY = childShape.offsetTop + childShape.offsetHeight / 2;
-
-                let midX = (parentX + childX) / 2;
-                let midY = (parentY + childY) / 2 - 50;
-
-                ctx.beginPath();
-                ctx.moveTo(parentX, parentY);
-                ctx.quadraticCurveTo(midX, midY, childX, childY);
-                ctx.strokeStyle = "black";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            });
-        }
-    }
-
-    window.onresize = drawLines;
-    makeDraggable(shapes[1]);
 </script>
 </body>
 </html>
