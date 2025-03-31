@@ -46,17 +46,30 @@
 <div class="tree">
     <div class="node" id="manager">Керівник</div>
     <div class="subordinates">
-        <div class="node" id="emp1" onclick="confirmPresence('emp1')">Співробітник 1</div>
-        <div class="node" id="emp2" onclick="confirmPresence('emp2')">Співробітник 2</div>
-        <div class="node" id="emp3" onclick="confirmPresence('emp3')">Співробітник 3</div>
+        <div class="node" id="emp1" onclick="confirmPresence('emp1')">Іван</div>
+        <div class="node" id="emp2" onclick="confirmPresence('emp2')">Олена</div>
+        <div class="node" id="emp3" onclick="confirmPresence('emp3')">Андрій</div>
     </div>
 </div>
 
 <script>
+    const employees = ['emp1', 'emp2', 'emp3'];
+
+    function loadState() {
+        employees.forEach(id => {
+            const el = document.getElementById(id);
+            const state = localStorage.getItem(id);
+            if (state) {
+                el.style.backgroundColor = state;
+            }
+        });
+    }
+
     function startHeadCount() {
-        ['emp1', 'emp2', 'emp3'].forEach(id => {
+        employees.forEach(id => {
             const el = document.getElementById(id);
             el.style.backgroundColor = 'red';
+            localStorage.setItem(id, 'red');
         });
     }
 
@@ -64,8 +77,11 @@
         const el = document.getElementById(empId);
         if (el.style.backgroundColor === 'red') {
             el.style.backgroundColor = 'green';
+            localStorage.setItem(empId, 'green');
         }
     }
+
+    window.onload = loadState;
 </script>
 </body>
 </html>
