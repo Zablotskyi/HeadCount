@@ -57,7 +57,10 @@
 </head>
 <body>
 <h1>HeadCount Відділ</h1>
-<button onclick="startHeadCount()">HeadCount</button>
+<div>
+    <button onclick="startHeadCount()">HeadCount</button>
+    <button onclick="resetAll()">Скинути все</button>
+</div>
 
 <div class="tree">
     <div class="node" id="manager">
@@ -110,6 +113,17 @@
             const el = document.getElementById(id);
             el.style.backgroundColor = 'red';
             localStorage.setItem(id, 'red');
+            localStorage.removeItem(`time-${id}`);
+            const timeLabel = document.getElementById(`time-${id}`);
+            if (timeLabel) timeLabel.textContent = '';
+        });
+    }
+
+    function resetAll() {
+        employees.forEach(id => {
+            const el = document.getElementById(id);
+            el.style.backgroundColor = 'green';
+            localStorage.setItem(id, 'green');
             localStorage.removeItem(`time-${id}`);
             const timeLabel = document.getElementById(`time-${id}`);
             if (timeLabel) timeLabel.textContent = '';
