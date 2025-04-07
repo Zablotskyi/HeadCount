@@ -39,6 +39,8 @@
         .subordinates {
             display: flex;
             gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .id-label {
@@ -58,103 +60,161 @@
             pointer-events: none;
             opacity: 0.5;
         }
+
+        #login-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #email-input {
+            padding: 8px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
-<h1>HeadCount Відділ</h1>
+<h1>HeadCount Система</h1>
 
-<!-- Вхід -->
 <div id="login-section">
-    <h3>Вхід до системи</h3>
-    <input type="email" id="email-input" placeholder="Введіть свій email">
+    <h3>Вхід</h3>
+    <input type="email" id="email-input" placeholder="Введіть email">
     <button onclick="login()">Увійти</button>
 </div>
 
-<!-- Основний інтерфейс -->
-<div class="tree">
+<div class="tree" id="tree-container">
+    <h2 id="dept-name"></h2>
     <button onclick="startHeadCount()">HeadCount</button>
-
-    <div class="node" id="manager">
-        <div>Керівник</div>
-        <div class="id-label">ID: 000</div>
-    </div>
-    <div class="subordinates">
-        <div class="node" id="emp1" onclick="confirmPresence('emp1')">
-            <div>Іван</div>
-            <div class="id-label">ID: 101</div>
-            <div class="time-label" id="time-emp1"></div>
-        </div>
-        <div class="node" id="emp2" onclick="confirmPresence('emp2')">
-            <div>Олена</div>
-            <div class="id-label">ID: 102</div>
-            <div class="time-label" id="time-emp2"></div>
-        </div>
-        <div class="node" id="emp3" onclick="confirmPresence('emp3')">
-            <div>Андрій</div>
-            <div class="id-label">ID: 103</div>
-            <div class="time-label" id="time-emp3"></div>
-        </div>
-    </div>
+    <div id="manager-node"></div>
+    <div class="subordinates" id="employees-container"></div>
 </div>
 
 <script>
-    const employees = {
-        'emp1': 'ivan@company.com',
-        'emp2': 'olena@company.com',
-        'emp3': 'andriy@company.com'
+    const departments = {
+        "it": {
+            name: "IT Відділ",
+            manager: {
+                name: "Олег",
+                email: "oleh@company.com",
+                id: "mgr-it"
+            },
+            employees: [
+                { name: "Іван", email: "ivan@company.com", id: "emp-it-1" },
+                { name: "Олена", email: "olena@company.com", id: "emp-it-2" }
+            ]
+        },
+        "hr": {
+            name: "HR Відділ",
+            manager: {
+                name: "Марія",
+                email: "maria@company.com",
+                id: "mgr-hr"
+            },
+            employees: [
+                { name: "Андрій", email: "andriy@company.com", id: "emp-hr-1" }
+            ]
+        }
     };
 
-    let currentUserId = null;
+    let currentUser = null;
 
     function login() {
-        const input = document.getElementById('email-input').value.trim().toLowerCase();
-        const match = Object.entries(employees).find(([id, email]) => email === input);
+        const email = document.getElementById('email-input').value.trim().toLowerCase();
+        for (const deptKey in departments) {
+            const dept = departments[deptKey];
 
-        if (match) {
-            currentUserId = match[0];
-            sessionStorage.setItem('userEmail', input);
-            document.getElementById('login-section').style.display = 'none';
-            document.querySelector('.tree').style.display = 'flex';
-            loadState();
-            updateClickPermissions();
-        } else {
-            alert('Email не знайдено. Спробуйте ще раз.');
+            if (dept.manager.email === email) {
+                currentUser = { ...dept.manager, role: 'manager', deptKey };
+            } else {
+                const emp = dept.employees.find(e => e.email === email);
+                if (emp) {
+                    currentUser = { ...emp, role: 'employee', deptKey };
+                }
+            }
+
+            if (currentUser) break;
         }
+
+        if (!currentUser) {
+            alert('Email не знайдено.');
+            return;
+        }
+
+        sessionStorage.setItem('userEmail', email);
+        document.getElementById('login-section').style.display = 'none';
+        buildInterface();
     }
 
-    function updateClickPermissions() {
-        Object.keys(employees).forEach(id => {
+    function buildInterface() {
+        const dept = departments[currentUser.deptKey];
+        document.getElementById('dept-name').textContent = dept.name;
+        document.querySelector('.tree').style.display = 'flex';
+
+        // керівник
+        const mgrNode = document.getElementById('manager-node');
+        mgrNode.innerHTML = `
+        <div class="node" id="${dept.manager.id}" onclick="confirmPresence('${dept.manager.id}')">
+          <div>${dept.manager.name} (Керівник)</div>
+          <div class="id-label">ID: ${dept.manager.id}</div>
+          <div class="time-label" id="time-${dept.manager.id}"></div>
+        </div>
+      `;
+
+        // співробітники
+        const empContainer = document.getElementById('employees-container');
+        empContainer.innerHTML = '';
+        dept.employees.forEach(emp => {
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.id = emp.id;
+            node.setAttribute('onclick', `confirmPresence('${emp.id}')`);
+            node.innerHTML = `
+          <div>${emp.name}</div>
+          <div class="id-label">ID: ${emp.id}</div>
+          <div class="time-label" id="time-${emp.id}"></div>
+        `;
+            empContainer.appendChild(node);
+        });
+
+        loadState();
+        setPermissions();
+    }
+
+    function setPermissions() {
+        const allIds = getAllUserIds();
+        allIds.forEach(id => {
             const el = document.getElementById(id);
-            if (id !== currentUserId) {
+            if (id !== currentUser.id) {
                 el.classList.add('disabled');
                 el.title = 'Недоступно для вас';
-            } else {
-                el.classList.remove('disabled');
-                el.title = '';
             }
         });
     }
 
+    function getAllUserIds() {
+        const dept = departments[currentUser.deptKey];
+        const ids = [dept.manager.id, ...dept.employees.map(e => e.id)];
+        return ids;
+    }
+
     function loadState() {
-        Object.keys(employees).forEach(id => {
+        const allIds = getAllUserIds();
+        allIds.forEach(id => {
             const el = document.getElementById(id);
             const state = localStorage.getItem(id);
-            if (state) {
-                el.style.backgroundColor = state;
-            } else {
-                el.style.backgroundColor = 'green';
-            }
+            el.style.backgroundColor = state || 'green';
 
             const time = localStorage.getItem(`time-${id}`);
             const timeLabel = document.getElementById(`time-${id}`);
-            if (time && timeLabel) {
+            if (time) {
                 timeLabel.textContent = `Останнє підтвердження: ${time}`;
             }
         });
     }
 
     function startHeadCount() {
-        Object.keys(employees).forEach(id => {
+        const allIds = getAllUserIds();
+        allIds.forEach(id => {
             const el = document.getElementById(id);
             el.style.backgroundColor = 'red';
             localStorage.setItem(id, 'red');
@@ -164,32 +224,28 @@
         });
     }
 
-    function confirmPresence(empId) {
-        if (empId !== currentUserId) return;
-        const el = document.getElementById(empId);
+    function confirmPresence(id) {
+        if (id !== currentUser.id) return;
+
+        const el = document.getElementById(id);
         if (el.style.backgroundColor === 'red') {
             el.style.backgroundColor = 'green';
-            localStorage.setItem(empId, 'green');
+            localStorage.setItem(id, 'green');
 
             const time = new Date().toLocaleString();
-            localStorage.setItem(`time-${empId}`, time);
+            localStorage.setItem(`time-${id}`, time);
 
-            const timeLabel = document.getElementById(`time-${empId}`);
+            const timeLabel = document.getElementById(`time-${id}`);
             if (timeLabel) timeLabel.textContent = `Останнє підтвердження: ${time}`;
         }
     }
 
+    // автологін
     window.onload = () => {
         const savedEmail = sessionStorage.getItem('userEmail');
         if (savedEmail) {
-            const match = Object.entries(employees).find(([id, email]) => email === savedEmail);
-            if (match) {
-                currentUserId = match[0];
-                document.getElementById('login-section').style.display = 'none';
-                document.querySelector('.tree').style.display = 'flex';
-                loadState();
-                updateClickPermissions();
-            }
+            document.getElementById('email-input').value = savedEmail;
+            login();
         }
     };
 </script>
