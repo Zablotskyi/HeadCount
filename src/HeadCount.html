@@ -14,7 +14,7 @@
         }
 
         .tree {
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
         }
@@ -30,7 +30,7 @@
             margin: 10px;
             cursor: pointer;
             border-radius: 8px;
-            background-color: #f0f0f0;
+            background-color: green;
             transition: background-color 0.3s;
             padding: 10px;
             text-align: center;
@@ -53,16 +53,27 @@
             color: #333;
             margin-top: 2px;
         }
+
+        .disabled {
+            pointer-events: none;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
 <h1>HeadCount Відділ</h1>
-<div>
-    <button onclick="startHeadCount()">HeadCount</button>
-    <button onclick="resetAll()">Скинути все</button>
+
+<!-- Вхід -->
+<div id="login-section">
+    <h3>Вхід до системи</h3>
+    <input type="email" id="email-input" placeholder="Введіть свій email">
+    <button onclick="login()">Увійти</button>
 </div>
 
+<!-- Основний інтерфейс -->
 <div class="tree">
+    <button onclick="startHeadCount()">HeadCount</button>
+
     <div class="node" id="manager">
         <div>Керівник</div>
         <div class="id-label">ID: 000</div>
@@ -87,17 +98,51 @@
 </div>
 
 <script>
-    const employees = ['emp1', 'emp2', 'emp3'];
+    const employees = {
+        'emp1': 'ivan@company.com',
+        'emp2': 'olena@company.com',
+        'emp3': 'andriy@company.com'
+    };
+
+    let currentUserId = null;
+
+    function login() {
+        const input = document.getElementById('email-input').value.trim().toLowerCase();
+        const match = Object.entries(employees).find(([id, email]) => email === input);
+
+        if (match) {
+            currentUserId = match[0];
+            sessionStorage.setItem('userEmail', input);
+            document.getElementById('login-section').style.display = 'none';
+            document.querySelector('.tree').style.display = 'flex';
+            loadState();
+            updateClickPermissions();
+        } else {
+            alert('Email не знайдено. Спробуйте ще раз.');
+        }
+    }
+
+    function updateClickPermissions() {
+        Object.keys(employees).forEach(id => {
+            const el = document.getElementById(id);
+            if (id !== currentUserId) {
+                el.classList.add('disabled');
+                el.title = 'Недоступно для вас';
+            } else {
+                el.classList.remove('disabled');
+                el.title = '';
+            }
+        });
+    }
 
     function loadState() {
-        employees.forEach(id => {
+        Object.keys(employees).forEach(id => {
             const el = document.getElementById(id);
             const state = localStorage.getItem(id);
             if (state) {
                 el.style.backgroundColor = state;
             } else {
                 el.style.backgroundColor = 'green';
-                localStorage.setItem(id, 'green');
             }
 
             const time = localStorage.getItem(`time-${id}`);
@@ -109,7 +154,7 @@
     }
 
     function startHeadCount() {
-        employees.forEach(id => {
+        Object.keys(employees).forEach(id => {
             const el = document.getElementById(id);
             el.style.backgroundColor = 'red';
             localStorage.setItem(id, 'red');
@@ -119,18 +164,8 @@
         });
     }
 
-    function resetAll() {
-        employees.forEach(id => {
-            const el = document.getElementById(id);
-            el.style.backgroundColor = 'green';
-            localStorage.setItem(id, 'green');
-            localStorage.removeItem(`time-${id}`);
-            const timeLabel = document.getElementById(`time-${id}`);
-            if (timeLabel) timeLabel.textContent = '';
-        });
-    }
-
     function confirmPresence(empId) {
+        if (empId !== currentUserId) return;
         const el = document.getElementById(empId);
         if (el.style.backgroundColor === 'red') {
             el.style.backgroundColor = 'green';
@@ -144,7 +179,19 @@
         }
     }
 
-    window.onload = loadState;
+    window.onload = () => {
+        const savedEmail = sessionStorage.getItem('userEmail');
+        if (savedEmail) {
+            const match = Object.entries(employees).find(([id, email]) => email === savedEmail);
+            if (match) {
+                currentUserId = match[0];
+                document.getElementById('login-section').style.display = 'none';
+                document.querySelector('.tree').style.display = 'flex';
+                loadState();
+                updateClickPermissions();
+            }
+        }
+    };
 </script>
 </body>
 </html>
