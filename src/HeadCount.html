@@ -95,23 +95,21 @@
             name: "IT Відділ",
             manager: {
                 name: "Олег",
-                email: "oleh@company.com",
-                id: "mgr-it"
+                email: "oleh@company.com"
             },
             employees: [
-                { name: "Іван", email: "ivan@company.com", id: "emp-it-1" },
-                { name: "Олена", email: "olena@company.com", id: "emp-it-2" }
+                { name: "Іван", email: "ivan@company.com" },
+                { name: "Олена", email: "olena@company.com" }
             ]
         },
         "hr": {
             name: "HR Відділ",
             manager: {
                 name: "Марія",
-                email: "maria@company.com",
-                id: "mgr-hr"
+                email: "maria@company.com"
             },
             employees: [
-                { name: "Андрій", email: "andriy@company.com", id: "emp-hr-1" }
+                { name: "Андрій", email: "andriy@company.com" }
             ]
         }
     };
@@ -150,97 +148,87 @@
         document.getElementById('dept-name').textContent = dept.name;
         document.querySelector('.tree').style.display = 'flex';
 
-        // керівник
         const mgrNode = document.getElementById('manager-node');
-        mgrNode.innerHTML = `
-        <div class="node" id="${dept.manager.id}" onclick="confirmPresence('${dept.manager.id}')">
-          <div>${dept.manager.name} (Керівник)</div>
-          <div class="id-label">ID: ${dept.manager.id}</div>
-          <div class="time-label" id="time-${dept.manager.id}"></div>
-        </div>
-      `;
+        mgrNode.innerHTML = createNodeHTML(dept.manager.name + " (Керівник)", dept.manager.email);
 
-        // співробітники
         const empContainer = document.getElementById('employees-container');
         empContainer.innerHTML = '';
         dept.employees.forEach(emp => {
             const node = document.createElement('div');
-            node.className = 'node';
-            node.id = emp.id;
-            node.setAttribute('onclick', `confirmPresence('${emp.id}')`);
-            node.innerHTML = `
-          <div>${emp.name}</div>
-          <div class="id-label">ID: ${emp.id}</div>
-          <div class="time-label" id="time-${emp.id}"></div>
-        `;
-            empContainer.appendChild(node);
+            node.innerHTML = createNodeHTML(emp.name, emp.email);
+            empContainer.appendChild(node.firstElementChild);
         });
 
         loadState();
         setPermissions();
     }
 
+    function createNodeHTML(name, email) {
+        return `
+        <div class="node" id="${email}" onclick="confirmPresence('${email}')">
+          <div>${name}</div>
+          <div class="id-label">${email}</div>
+          <div class="time-label" id="time-${email}"></div>
+        </div>
+      `;
+    }
+
+    function getAllUserEmails() {
+        const dept = departments[currentUser.deptKey];
+        return [dept.manager.email, ...dept.employees.map(e => e.email)];
+    }
+
     function setPermissions() {
-        const allIds = getAllUserIds();
-        allIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (id !== currentUser.id) {
+        getAllUserEmails().forEach(email => {
+            const el = document.getElementById(email);
+            if (email !== currentUser.email) {
                 el.classList.add('disabled');
                 el.title = 'Недоступно для вас';
             }
         });
     }
 
-    function getAllUserIds() {
-        const dept = departments[currentUser.deptKey];
-        const ids = [dept.manager.id, ...dept.employees.map(e => e.id)];
-        return ids;
-    }
-
     function loadState() {
-        const allIds = getAllUserIds();
-        allIds.forEach(id => {
-            const el = document.getElementById(id);
-            const state = localStorage.getItem(id);
+        getAllUserEmails().forEach(email => {
+            const el = document.getElementById(email);
+            const state = localStorage.getItem(email);
             el.style.backgroundColor = state || 'green';
 
-            const time = localStorage.getItem(`time-${id}`);
-            const timeLabel = document.getElementById(`time-${id}`);
-            if (time) {
+            const time = localStorage.getItem(`time-${email}`);
+            const timeLabel = document.getElementById(`time-${email}`);
+            if (time && timeLabel) {
                 timeLabel.textContent = `Останнє підтвердження: ${time}`;
             }
         });
     }
 
     function startHeadCount() {
-        const allIds = getAllUserIds();
-        allIds.forEach(id => {
-            const el = document.getElementById(id);
+        getAllUserEmails().forEach(email => {
+            const el = document.getElementById(email);
             el.style.backgroundColor = 'red';
-            localStorage.setItem(id, 'red');
-            localStorage.removeItem(`time-${id}`);
-            const timeLabel = document.getElementById(`time-${id}`);
+            localStorage.setItem(email, 'red');
+            localStorage.removeItem(`time-${email}`);
+            const timeLabel = document.getElementById(`time-${email}`);
             if (timeLabel) timeLabel.textContent = '';
         });
     }
 
-    function confirmPresence(id) {
-        if (id !== currentUser.id) return;
+    function confirmPresence(email) {
+        if (email !== currentUser.email) return;
 
-        const el = document.getElementById(id);
+        const el = document.getElementById(email);
         if (el.style.backgroundColor === 'red') {
             el.style.backgroundColor = 'green';
-            localStorage.setItem(id, 'green');
+            localStorage.setItem(email, 'green');
 
             const time = new Date().toLocaleString();
-            localStorage.setItem(`time-${id}`, time);
+            localStorage.setItem(`time-${email}`, time);
 
-            const timeLabel = document.getElementById(`time-${id}`);
+            const timeLabel = document.getElementById(`time-${email}`);
             if (timeLabel) timeLabel.textContent = `Останнє підтвердження: ${time}`;
         }
     }
 
-    // автологін
     window.onload = () => {
         const savedEmail = sessionStorage.getItem('userEmail');
         if (savedEmail) {
