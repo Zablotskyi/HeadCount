@@ -181,7 +181,7 @@
     function setPermissions() {
         getAllUserEmails().forEach(email => {
             const el = document.getElementById(email);
-            if (email !== currentUser.email) {
+            if (email !== currentUser.email && currentUser.role !== 'manager') {
                 el.classList.add('disabled');
                 el.title = 'Недоступно для вас';
             }
@@ -214,7 +214,10 @@
     }
 
     function confirmPresence(email) {
-        if (email !== currentUser.email) return;
+        const isManager = currentUser.role === 'manager';
+        const isSelf = email === currentUser.email;
+
+        if (!isManager && !isSelf) return;
 
         const el = document.getElementById(email);
         if (el.style.backgroundColor === 'red') {
@@ -225,7 +228,13 @@
             localStorage.setItem(`time-${email}`, time);
 
             const timeLabel = document.getElementById(`time-${email}`);
-            if (timeLabel) timeLabel.textContent = `Останнє підтвердження: ${time}`;
+            if (timeLabel) {
+                let label = `Останнє підтвердження: ${time}`;
+                if (isManager && !isSelf) {
+                    label += ' — підтвердив керівник';
+                }
+                timeLabel.textContent = label;
+            }
         }
     }
 
