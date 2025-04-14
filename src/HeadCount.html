@@ -17,13 +17,14 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 40px;
+            gap: 20px;
         }
 
         .department {
             border: 1px solid #ccc;
             padding: 20px;
             border-radius: 12px;
+            margin-top: 20px;
         }
 
         .department h3 {
@@ -83,9 +84,17 @@
             font-size: 16px;
         }
 
-        button {
+        button, select {
             padding: 10px 16px;
             font-size: 16px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
         }
     </style>
 </head>
@@ -99,7 +108,12 @@
 </div>
 
 <div class="tree" id="tree-container">
-    <button id="headcount-btn" onclick="startHeadCount()">HeadCount</button>
+    <div class="controls">
+        <button id="headcount-btn" onclick="startHeadCount()">HeadCount</button>
+        <select id="department-filter" onchange="buildInterface()">
+            <option value="all">Усі відділи</option>
+        </select>
+    </div>
     <div id="departments-container"></div>
 </div>
 
@@ -152,22 +166,34 @@
 
         sessionStorage.setItem('userEmail', email);
         document.getElementById('login-section').style.display = 'none';
+        document.querySelector('.tree').style.display = 'flex';
+
+        if (currentUser.role === 'security') {
+            populateFilterOptions();
+        } else {
+            document.getElementById('department-filter').style.display = 'none';
+            document.getElementById('headcount-btn').style.display = 'none';
+        }
+
         buildInterface();
     }
 
-    function buildInterface() {
-        document.querySelector('.tree').style.display = 'flex';
-
-        const headcountBtn = document.getElementById('headcount-btn');
-        if (currentUser.role !== 'security') {
-            headcountBtn.style.display = 'none';
+    function populateFilterOptions() {
+        const filter = document.getElementById('department-filter');
+        filter.innerHTML = `<option value="all">Усі відділи</option>`;
+        for (const key in departments) {
+            const dept = departments[key];
+            filter.innerHTML += `<option value="${key}">${dept.name}</option>`;
         }
+    }
 
+    function buildInterface() {
+        const filterValue = document.getElementById('department-filter')?.value || currentUser.deptKey;
         const container = document.getElementById('departments-container');
         container.innerHTML = '';
 
         const visibleDepartments = currentUser.role === 'security'
-            ? Object.entries(departments)
+            ? Object.entries(departments).filter(([key]) => filterValue === 'all' || key === filterValue)
             : [[currentUser.deptKey, departments[currentUser.deptKey]]];
 
         visibleDepartments.forEach(([deptKey, dept]) => {
@@ -257,7 +283,16 @@
     function startHeadCount() {
         if (currentUser.role !== 'security') return;
 
-        const emails = getAllUserEmails();
+        const filterValue = document.getElementById('department-filter')?.value;
+        const emails = [];
+
+        Object.entries(departments).forEach(([key, dept]) => {
+            if (filterValue === 'all' || key === filterValue) {
+                emails.push(dept.manager.email);
+                dept.employees.forEach(e => emails.push(e.email));
+            }
+        });
+
         emails.forEach(email => {
             const el = document.getElementById(email);
             if (el) {
