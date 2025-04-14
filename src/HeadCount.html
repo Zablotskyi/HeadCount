@@ -99,7 +99,7 @@
 </div>
 
 <div class="tree" id="tree-container">
-    <button onclick="startHeadCount()">HeadCount</button>
+    <button id="headcount-btn" onclick="startHeadCount()">HeadCount</button>
     <div id="departments-container"></div>
 </div>
 
@@ -157,6 +157,12 @@
 
     function buildInterface() {
         document.querySelector('.tree').style.display = 'flex';
+
+        const headcountBtn = document.getElementById('headcount-btn');
+        if (currentUser.role !== 'security') {
+            headcountBtn.style.display = 'none';
+        }
+
         const container = document.getElementById('departments-container');
         container.innerHTML = '';
 
@@ -172,10 +178,8 @@
             title.textContent = dept.name;
             deptDiv.appendChild(title);
 
-            // керівник
             deptDiv.appendChild(createNodeHTML(`${dept.manager.name} (Керівник)`, dept.manager.email));
 
-            // працівники
             const empContainer = document.createElement('div');
             empContainer.className = 'subordinates';
 
@@ -222,10 +226,8 @@
         const allEmails = getAllUserEmails();
         allEmails.forEach(email => {
             const el = document.getElementById(email);
-            if (currentUser.role === 'security') {
-                // full access
-                return;
-            } else if (currentUser.role === 'manager') {
+            if (currentUser.role === 'security') return;
+            if (currentUser.role === 'manager') {
                 if (!getCurrentDeptEmails().includes(email)) {
                     el.classList.add('disabled');
                 }
@@ -253,12 +255,9 @@
     }
 
     function startHeadCount() {
-        const emails = currentUser.role === 'security'
-            ? getAllUserEmails()
-            : currentUser.role === 'manager'
-                ? getCurrentDeptEmails()
-                : [];
+        if (currentUser.role !== 'security') return;
 
+        const emails = getAllUserEmails();
         emails.forEach(email => {
             const el = document.getElementById(email);
             if (el) {
