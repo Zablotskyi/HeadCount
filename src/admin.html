@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Панель</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 40px;
+      max-width: 600px;
+      margin: auto;
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body id="admin-body">
+  <h1>Адмін-панель</h1>
+
+  <button onclick="alert('Форма додавання відділу ще в розробці')">➕ Додати відділ</button>
+  <button onclick="alert('Форма додавання працівника ще в розробці')">➕ Додати працівника</button>
+  <button onclick="window.location.href='index.html'">⬅ Повернутись до HeadCount</button>
+
+  <script>
+    const allowedAdmin = 'admin@company.com';
+    const savedEmail = sessionStorage.getItem('userEmail');
+
+    if (savedEmail === allowedAdmin) {
+      document.getElementById('admin-body').style.display = 'flex';
+    } else {
+      alert('Доступ заборонено. Ви не адміністратор.');
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

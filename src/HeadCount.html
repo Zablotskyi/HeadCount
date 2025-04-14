@@ -119,6 +119,7 @@
 
 <script>
     const SECURITY_EMAIL = 'security@company.com';
+    const ADMIN_EMAIL = 'admin@company.com';
 
     const departments = {
         "it": {
@@ -144,6 +145,8 @@
         const email = document.getElementById('email-input').value.trim().toLowerCase();
         if (email === SECURITY_EMAIL) {
             currentUser = { email, role: 'security' };
+        } else if (email === ADMIN_EMAIL) {
+            currentUser = { email, role: 'admin' };
         } else {
             for (const deptKey in departments) {
                 const dept = departments[deptKey];
@@ -168,7 +171,7 @@
         document.getElementById('login-section').style.display = 'none';
         document.querySelector('.tree').style.display = 'flex';
 
-        if (currentUser.role === 'security') {
+        if (currentUser.role === 'security' || currentUser.role === 'admin') {
             populateFilterOptions();
         } else {
             document.getElementById('department-filter').style.display = 'none';
@@ -192,7 +195,7 @@
         const container = document.getElementById('departments-container');
         container.innerHTML = '';
 
-        const visibleDepartments = currentUser.role === 'security'
+        const visibleDepartments = (currentUser.role === 'security' || currentUser.role === 'admin')
             ? Object.entries(departments).filter(([key]) => filterValue === 'all' || key === filterValue)
             : [[currentUser.deptKey, departments[currentUser.deptKey]]];
 
@@ -252,7 +255,7 @@
         const allEmails = getAllUserEmails();
         allEmails.forEach(email => {
             const el = document.getElementById(email);
-            if (currentUser.role === 'security') return;
+            if (['security', 'admin'].includes(currentUser.role)) return;
             if (currentUser.role === 'manager') {
                 if (!getCurrentDeptEmails().includes(email)) {
                     el.classList.add('disabled');
@@ -281,7 +284,7 @@
     }
 
     function startHeadCount() {
-        if (currentUser.role !== 'security') return;
+        if (!['security', 'admin'].includes(currentUser.role)) return;
 
         const filterValue = document.getElementById('department-filter')?.value;
         const emails = [];
@@ -306,11 +309,12 @@
     }
 
     function confirmPresence(email) {
+        const isAdmin = currentUser.role === 'admin';
         const isSecurity = currentUser.role === 'security';
         const isManager = currentUser.role === 'manager';
         const isSelf = email === currentUser.email;
 
-        if (!(isSecurity || isManager || isSelf)) return;
+        if (!(isAdmin || isSecurity || isManager || isSelf)) return;
 
         const el = document.getElementById(email);
         if (el.style.backgroundColor === 'red') {
@@ -323,7 +327,9 @@
             const timeLabel = document.getElementById(`time-${email}`);
             if (timeLabel) {
                 let label = `Останнє підтвердження: ${time}`;
-                if (isSecurity && !isSelf) {
+                if (isAdmin && !isSelf) {
+                    label += ' — підтвердив адміністратор';
+                } else if (isSecurity && !isSelf) {
                     label += ' — підтвердив координатор безпеки';
                 } else if (isManager && !isSelf) {
                     label += ' — підтвердив керівник';
