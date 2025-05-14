@@ -7,42 +7,196 @@
     body {
       font-family: sans-serif;
       padding: 40px;
-      max-width: 600px;
+      max-width: 800px;
       margin: auto;
       display: none;
       flex-direction: column;
-      gap: 20px;
+      gap: 30px;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
     }
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-      cursor: pointer;
+    form {
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
-    .hidden {
-      display: none;
+    label {
+      font-weight: bold;
+    }
+    input, select, button {
+      padding: 8px;
+      font-size: 16px;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    li {
+      margin: 4px 0;
     }
   </style>
 </head>
 <body id="admin-body">
-  <h1>Адмін-панель</h1>
+<h1>Адмін-панель</h1>
 
-  <button onclick="alert('Форма додавання відділу ще в розробці')">➕ Додати відділ</button>
-  <button onclick="alert('Форма додавання працівника ще в розробці')">➕ Додати працівника</button>
-  <button onclick="window.location.href='index.html'">⬅ Повернутись до HeadCount</button>
+<form id="add-dept-form">
+  <h2>➕ Додати відділ</h2>
+  <label>Ідентифікатор (англ): <input type="text" id="dept-key" required></label>
+  <label>Назва відділу: <input type="text" id="dept-name" required></label>
+  <label>Імʼя керівника: <input type="text" id="manager-name" required></label>
+  <label>Email керівника: <input type="email" id="manager-email" required></label>
+  <button type="submit">Додати відділ</button>
+</form>
 
-  <script>
-    const allowedAdmin = 'admin@company.com';
-    const savedEmail = sessionStorage.getItem('userEmail');
+<form id="add-emp-form">
+  <h2>➕ Додати співробітника</h2>
+  <label>Відділ:
+    <select id="emp-dept" required></select>
+  </label>
+  <label>Імʼя: <input type="text" id="emp-name" required></label>
+  <label>Email: <input type="email" id="emp-email" required></label>
+  <button type="submit">Додати співробітника</button>
+</form>
 
-    if (savedEmail === allowedAdmin) {
-      document.getElementById('admin-body').style.display = 'flex';
-    } else {
-      alert('Доступ заборонено. Ви не адміністратор.');
-      window.location.href = 'index.html';
+<div>
+  <h2>🗑 Видалити відділ</h2>
+  <ul id="dept-list"></ul>
+</div>
+
+<div>
+  <h2>🗑 Видалити співробітника</h2>
+  <ul id="emp-list"></ul>
+</div>
+
+<button onclick="window.location.href='index.html'">⬅ Назад до HeadCount</button>
+
+<script>
+  const allowedAdmin = 'admin@company.com';
+  const savedEmail = sessionStorage.getItem('userEmail');
+
+  if (savedEmail === allowedAdmin) {
+    document.getElementById('admin-body').style.display = 'flex';
+  } else {
+    alert('Доступ заборонено. Ви не адміністратор.');
+    window.location.href = 'index.html';
+  }
+
+  let departments = JSON.parse(localStorage.getItem('departments')) || {};
+
+  function saveDepartments() {
+    localStorage.setItem('departments', JSON.stringify(departments));
+  }
+
+  function refreshUI() {
+    const deptSelect = document.getElementById('emp-dept');
+    const deptList = document.getElementById('dept-list');
+    const empList = document.getElementById('emp-list');
+
+    deptSelect.innerHTML = '';
+    deptList.innerHTML = '';
+    empList.innerHTML = '';
+
+    for (const key in departments) {
+      const dept = departments[key];
+
+      // Dropdown
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = dept.name;
+      deptSelect.appendChild(opt);
+
+      // Delete department
+      const li = document.createElement('li');
+      li.innerHTML = `${dept.name} <button onclick="deleteDepartment('${key}')">Видалити</button>`;
+      deptList.appendChild(li);
+
+      // Delete manager
+      const managerLi = document.createElement('li');
+      managerLi.innerHTML = `👔 ${dept.manager.name} (${dept.manager.email}) [керівник]
+          <button onclick="deleteEmployee('${key}', '${dept.manager.email}', true)">Видалити</button>`;
+      empList.appendChild(managerLi);
+
+      // Delete employees
+      dept.employees.forEach(emp => {
+        const empLi = document.createElement('li');
+        empLi.innerHTML = `👤 ${emp.name} (${emp.email})
+            <button onclick="deleteEmployee('${key}', '${emp.email}', false)">Видалити</button>`;
+        empList.appendChild(empLi);
+      });
     }
-  </script>
+  }
+
+  function deleteDepartment(key) {
+    if (confirm(`Ви точно хочете видалити відділ "${departments[key].name}"?`)) {
+      delete departments[key];
+      saveDepartments();
+      refreshUI();
+    }
+  }
+
+  function deleteEmployee(deptKey, email, isManager) {
+    if (isManager) {
+      if (confirm('Це керівник. Видалити весь відділ?')) {
+        delete departments[deptKey];
+      }
+    } else {
+      departments[deptKey].employees = departments[deptKey].employees.filter(e => e.email !== email);
+    }
+    saveDepartments();
+    refreshUI();
+  }
+
+  document.getElementById('add-dept-form').onsubmit = e => {
+    e.preventDefault();
+    const key = document.getElementById('dept-key').value.trim();
+    const name = document.getElementById('dept-name').value.trim();
+    const mgrName = document.getElementById('manager-name').value.trim();
+    const mgrEmail = document.getElementById('manager-email').value.trim();
+
+    if (departments[key]) {
+      alert('Відділ з таким ідентифікатором уже існує!');
+      return;
+    }
+
+    departments[key] = {
+      name,
+      manager: { name: mgrName, email: mgrEmail },
+      employees: []
+    };
+
+    saveDepartments();
+    refreshUI();
+    e.target.reset();
+  };
+
+  document.getElementById('add-emp-form').onsubmit = e => {
+    e.preventDefault();
+    const dept = document.getElementById('emp-dept').value;
+    const name = document.getElementById('emp-name').value.trim();
+    const email = document.getElementById('emp-email').value.trim();
+
+    if (!departments[dept]) {
+      alert('Відділ не знайдено!');
+      return;
+    }
+
+    if (departments[dept].employees.some(e => e.email === email) ||
+            departments[dept].manager.email === email) {
+      alert('Такий email уже існує в цьому відділі!');
+      return;
+    }
+
+    departments[dept].employees.push({ name, email });
+    saveDepartments();
+    refreshUI();
+    e.target.reset();
+  };
+
+  window.onload = refreshUI;
+</script>
 </body>
 </html>
