@@ -29,7 +29,7 @@
     }
     .node {
       width: 180px;
-      min-height: 100px;
+      min-height: 130px;
       border: 2px solid #333;
       display: flex;
       flex-direction: column;
@@ -49,10 +49,12 @@
       flex-wrap: wrap;
       justify-content: center;
     }
-    .id-label {
+    .id-label, .phone-label {
       font-size: 14px;
-      font-weight: bold;
       margin-top: 4px;
+    }
+    .id-label {
+      font-weight: bold;
     }
     .time-label {
       font-size: 11px;
@@ -86,13 +88,11 @@
 </head>
 <body>
 <h1>HeadCount Система</h1>
-
 <div id="login-section">
   <h3>Вхід</h3>
   <input type="email" id="email-input" placeholder="Введіть email" />
   <button onclick="login()">Увійти</button>
 </div>
-
 <div class="tree" id="tree-container">
   <div class="controls">
     <button id="headcount-btn" onclick="startHeadCount()">HeadCount</button>
@@ -139,7 +139,7 @@
     }
 
     if (!currentUser) {
-      alert("Email не знайдено в структурі. Доступ заборонено.");
+      alert("Email не знайдено в структурі.");
       return;
     }
 
@@ -187,7 +187,7 @@
       empContainer.className = "subordinates";
 
       dept.employees.forEach((emp) => {
-        empContainer.appendChild(createNodeHTML(emp.name, emp.email));
+        empContainer.appendChild(createNodeHTML(emp.name, emp.email, emp.phone));
       });
 
       deptDiv.appendChild(empContainer);
@@ -197,7 +197,7 @@
     setPermissions();
   }
 
-  function createNodeHTML(name, email) {
+  function createNodeHTML(name, email, phone = "") {
     const div = document.createElement("div");
     div.className = "node";
     div.id = email;
@@ -209,10 +209,11 @@
     div.style.backgroundColor = savedColor;
 
     div.innerHTML = `
-        <div>${name}</div>
-        <div class="id-label">${email}</div>
-        <div class="time-label" id="time-${email}">${savedTime ? `Останнє підтвердження: ${savedTime}` : ""}</div>
-      `;
+      <div>${name}</div>
+      ${phone ? `<div class="phone-label">${phone}</div>` : ""}
+      <div class="id-label">${email}</div>
+      <div class="time-label" id="time-${email}">${savedTime ? `Останнє підтвердження: ${savedTime}` : ""}</div>
+    `;
     return div;
   }
 

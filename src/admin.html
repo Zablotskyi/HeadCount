@@ -59,6 +59,7 @@
   </label>
   <label>Імʼя: <input type="text" id="emp-name" required></label>
   <label>Email: <input type="email" id="emp-email" required></label>
+  <label>Телефон: <input type="text" id="emp-phone" placeholder="+38 0xx xxx xxxx" required></label>
   <button type="submit">Додати співробітника</button>
 </form>
 
@@ -123,7 +124,7 @@
       // Delete employees
       dept.employees.forEach(emp => {
         const empLi = document.createElement('li');
-        empLi.innerHTML = `👤 ${emp.name} (${emp.email})
+        empLi.innerHTML = `👤 ${emp.name} (${emp.email}) ${emp.phone ? `📞 ${emp.phone}` : ""}
             <button onclick="deleteEmployee('${key}', '${emp.email}', false)">Видалити</button>`;
         empList.appendChild(empLi);
       });
@@ -178,6 +179,7 @@
     const dept = document.getElementById('emp-dept').value;
     const name = document.getElementById('emp-name').value.trim();
     const email = document.getElementById('emp-email').value.trim();
+    const phone = document.getElementById('emp-phone').value.trim();
 
     if (!departments[dept]) {
       alert('Відділ не знайдено!');
@@ -190,7 +192,7 @@
       return;
     }
 
-    departments[dept].employees.push({ name, email });
+    departments[dept].employees.push({ name, email, phone });
     saveDepartments();
     refreshUI();
     e.target.reset();
