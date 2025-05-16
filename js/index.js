@@ -6,7 +6,17 @@ let currentUser = null;
 
 function login() {
     const email = document.getElementById("email-input").value.trim().toLowerCase();
-    if (!email) return alert("Введіть email.");
+    const password = document.getElementById("password-input").value.trim();
+
+    if (!email || !password) {
+        alert("Введіть email і пароль.");
+        return;
+    }
+
+    if (email !== password) {
+        alert("Невірний пароль (тимчасово він має збігатись із email).");
+        return;
+    }
 
     sessionStorage.setItem("userEmail", email);
 

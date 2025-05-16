@@ -37,13 +37,14 @@ function refreshUI() {
         li.innerHTML = `${dept.name} <button onclick="deleteDepartment('${key}')">Видалити</button>`;
         deptList.appendChild(li);
 
-        // Delete manager
+        // Manager
+        const m = dept.manager;
         const managerLi = document.createElement('li');
-        managerLi.innerHTML = `👔 ${dept.manager.name} (${dept.manager.email}) [керівник]
-      <button onclick="deleteEmployee('${key}', '${dept.manager.email}', true)">Видалити</button>`;
+        managerLi.innerHTML = `👔 ${m.name} (${m.email}) ${m.phone ? `📞 ${m.phone}` : ""}
+      <button onclick="deleteEmployee('${key}', '${m.email}', true)">Видалити</button>`;
         empList.appendChild(managerLi);
 
-        // Delete employees
+        // Employees
         dept.employees.forEach(emp => {
             const empLi = document.createElement('li');
             empLi.innerHTML = `👤 ${emp.name} (${emp.email}) ${emp.phone ? `📞 ${emp.phone}` : ""}
@@ -79,6 +80,7 @@ document.getElementById('add-dept-form').onsubmit = e => {
     const name = document.getElementById('dept-name').value.trim();
     const mgrName = document.getElementById('manager-name').value.trim();
     const mgrEmail = document.getElementById('manager-email').value.trim();
+    const mgrPhone = document.getElementById('manager-phone').value.trim();
 
     if (departments[key]) {
         alert('Відділ з таким ідентифікатором уже існує!');
@@ -87,7 +89,7 @@ document.getElementById('add-dept-form').onsubmit = e => {
 
     departments[key] = {
         name,
-        manager: { name: mgrName, email: mgrEmail },
+        manager: { name: mgrName, email: mgrEmail, phone: mgrPhone },
         employees: []
     };
 
