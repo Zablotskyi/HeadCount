@@ -85,7 +85,8 @@ function buildInterface() {
         title.textContent = dept.name;
         deptDiv.appendChild(title);
 
-        deptDiv.appendChild(createNodeHTML(dept.manager.name + " (Керівник)", dept.manager.email));
+        const m = dept.manager;
+        deptDiv.appendChild(createNodeHTML(m.name + " (Керівник)", m.email, m.phone));
 
         const empContainer = document.createElement("div");
         empContainer.className = "subordinates";
@@ -109,14 +110,21 @@ function createNodeHTML(name, email, phone = "") {
 
     const savedColor = localStorage.getItem(email) || "green";
     const savedTime = localStorage.getItem(`time-${email}`);
+    const savedBy = localStorage.getItem(`by-${email}`);
 
     div.style.backgroundColor = savedColor;
+
+    let byNote = "";
+    if (savedBy === "security") byNote = " — підтвердив координатор безпеки";
+    else if (savedBy === "manager") byNote = " — підтвердив керівник";
 
     div.innerHTML = `
     <div>${name}</div>
     ${phone ? `<div class="phone-label">${phone}</div>` : ""}
     <div class="id-label">${email}</div>
-    <div class="time-label" id="time-${email}">${savedTime ? `Останнє підтвердження: ${savedTime}` : ""}</div>
+    <div class="time-label" id="time-${email}">
+      ${savedTime ? `Останнє підтвердження: ${savedTime}${byNote}` : ""}
+    </div>
   `;
     return div;
 }
@@ -169,6 +177,7 @@ function startHeadCount() {
             el.style.backgroundColor = "red";
             localStorage.setItem(email, "red");
             localStorage.removeItem(`time-${email}`);
+            localStorage.removeItem(`by-${email}`);
             const timeLabel = document.getElementById(`time-${email}`);
             if (timeLabel) timeLabel.textContent = "";
         }
@@ -190,11 +199,16 @@ function confirmPresence(email) {
         const time = new Date().toLocaleString();
         localStorage.setItem(`time-${email}`, time);
 
+        let by = "";
+        if (isSecurity && !isSelf) by = "security";
+        else if (isManager && !isSelf) by = "manager";
+        localStorage.setItem(`by-${email}`, by);
+
         const timeLabel = document.getElementById(`time-${email}`);
         if (timeLabel) {
             let label = `Останнє підтвердження: ${time}`;
-            if (isSecurity && !isSelf) label += " — підтвердив координатор безпеки";
-            else if (isManager && !isSelf) label += " — підтвердив керівник";
+            if (by === "security") label += " — підтвердив координатор безпеки";
+            else if (by === "manager") label += " — підтвердив керівник";
             timeLabel.textContent = label;
         }
     }
@@ -204,6 +218,7 @@ window.onload = () => {
     const savedEmail = sessionStorage.getItem("userEmail");
     if (savedEmail) {
         document.getElementById("email-input").value = savedEmail;
+        document.getElementById("password-input").value = savedEmail;
         login();
     }
 };
