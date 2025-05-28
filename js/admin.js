@@ -83,7 +83,7 @@ function refreshUI() {
                 const m = dept.manager;
                 if (m.name.toLowerCase().includes(val) || m.email.toLowerCase().includes(val)) {
                     const li = document.createElement('li');
-                    li.innerHTML = `<span class="highlight">👔 ${m.name} (${m.email}) — ${dept.name}</span>`;
+                    li.innerHTML = `👔 ${m.name} (${m.email}) — ${dept.name}`;
                     li.onclick = () => selectUserForDeletion(key, m.email, true, li);
                     searchResults.appendChild(li);
                 }
@@ -91,7 +91,7 @@ function refreshUI() {
                 dept.employees.forEach(e => {
                     if (e.name.toLowerCase().includes(val) || e.email.toLowerCase().includes(val)) {
                         const li = document.createElement('li');
-                        li.innerHTML = `<span class="highlight">👤 ${e.name} (${e.email}) — ${dept.name}</span>`;
+                        li.innerHTML = `👤 ${e.name} (${e.email}) — ${dept.name}`;
                         li.onclick = () => selectUserForDeletion(key, e.email, false, li);
                         searchResults.appendChild(li);
                     }
@@ -103,9 +103,14 @@ function refreshUI() {
 
 function selectUserForDeletion(deptKey, email, isManager, liElement) {
     selectedForDeletion = { deptKey, email, isManager };
-    const list = document.getElementById('search-results');
-    [...list.children].forEach(li => li.style.background = '');
-    liElement.style.background = '#ffd';
+
+    const rawText = liElement.innerText;
+    const match = rawText.match(/([^\(]+)\(([^\)]+)\)/);
+    if (match) {
+        const displayName = match[1].trim();
+        const displayEmail = match[2].trim();
+        document.getElementById('search-emp').value = `${displayName} (${displayEmail})`;
+    }
 }
 
 function deleteSelectedDepartment() {
