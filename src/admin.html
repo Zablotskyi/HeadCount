@@ -50,6 +50,12 @@
       text-align: center;
       background-color: #f9f9f9;
     }
+    .highlight {
+      background-color: #def;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+    }
   </style>
 </head>
 <body id="admin-body">
@@ -94,8 +100,9 @@
 
 <div>
   <h2>🔻 видалення співробітника</h2>
-  <select id="delete-emp-select"></select>
-  <button onclick="deleteSelectedEmployee()">Видалити співробітника</button>
+  <input type="text" id="search-emp" placeholder="Пошук за імʼям або email">
+  <ul id="search-results"></ul>
+  <button onclick="deleteSelectedEmployee()">Видалити обраного співробітника</button>
 </div>
 
 <button onclick="window.location.href='index.html'">⬅ Назад до HeadCount</button>

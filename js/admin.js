@@ -9,6 +9,7 @@ if (savedEmail === allowedAdmin) {
 }
 
 let departments = JSON.parse(localStorage.getItem('departments')) || {};
+let selectedForDeletion = null;
 
 function saveDepartments() {
     localStorage.setItem('departments', JSON.stringify(departments));
@@ -17,15 +18,17 @@ function saveDepartments() {
 function refreshUI() {
     const deptSelect = document.getElementById('emp-dept');
     const deleteDeptSelect = document.getElementById('delete-dept-select');
-    const deleteEmpSelect = document.getElementById('delete-emp-select');
     const deptViewList = document.getElementById('dept-view-list');
     const empList = document.getElementById('emp-list');
+    const searchInput = document.getElementById('search-emp');
+    const searchResults = document.getElementById('search-results');
 
     deptSelect.innerHTML = '';
     deleteDeptSelect.innerHTML = '';
-    deleteEmpSelect.innerHTML = '';
     deptViewList.innerHTML = '';
     empList.innerHTML = '';
+    searchResults.innerHTML = '';
+    selectedForDeletion = null;
 
     for (const key in departments) {
         const dept = departments[key];
@@ -53,9 +56,6 @@ function refreshUI() {
       <span style="display:inline-block; width:160px;">${m.phone || ""}</span>`;
         empList.appendChild(managerLi);
 
-        const mgrOpt = new Option(`${m.name} (${m.email}) — ${dept.name}`, `${key}|${m.email}|true`);
-        deleteEmpSelect.appendChild(mgrOpt);
-
         // Employees
         dept.employees.forEach(emp => {
             const empLi = document.createElement('li');
@@ -66,11 +66,46 @@ function refreshUI() {
         <span style="display:inline-block; width:240px;">${emp.email}</span>
         <span style="display:inline-block; width:160px;">${emp.phone || ""}</span>`;
             empList.appendChild(empLi);
-
-            const empOpt = new Option(`${emp.name} (${emp.email}) — ${dept.name}`, `${key}|${emp.email}|false`);
-            deleteEmpSelect.appendChild(empOpt);
         });
     }
+
+    // Пошук співробітника
+    if (searchInput) {
+        searchInput.oninput = () => {
+            const val = searchInput.value.toLowerCase().trim();
+            searchResults.innerHTML = '';
+            selectedForDeletion = null;
+
+            if (!val) return;
+
+            for (const key in departments) {
+                const dept = departments[key];
+                const m = dept.manager;
+                if (m.name.toLowerCase().includes(val) || m.email.toLowerCase().includes(val)) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="highlight">👔 ${m.name} (${m.email}) — ${dept.name}</span>`;
+                    li.onclick = () => selectUserForDeletion(key, m.email, true, li);
+                    searchResults.appendChild(li);
+                }
+
+                dept.employees.forEach(e => {
+                    if (e.name.toLowerCase().includes(val) || e.email.toLowerCase().includes(val)) {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span class="highlight">👤 ${e.name} (${e.email}) — ${dept.name}</span>`;
+                        li.onclick = () => selectUserForDeletion(key, e.email, false, li);
+                        searchResults.appendChild(li);
+                    }
+                });
+            }
+        };
+    }
+}
+
+function selectUserForDeletion(deptKey, email, isManager, liElement) {
+    selectedForDeletion = { deptKey, email, isManager };
+    const list = document.getElementById('search-results');
+    [...list.children].forEach(li => li.style.background = '');
+    liElement.style.background = '#ffd';
 }
 
 function deleteSelectedDepartment() {
@@ -86,18 +121,13 @@ function deleteSelectedDepartment() {
 }
 
 function deleteSelectedEmployee() {
-    const select = document.getElementById('delete-emp-select');
-    const value = select.value;
+    if (!selectedForDeletion) {
+        alert("Оберіть співробітника зі списку пошуку.");
+        return;
+    }
 
-    if (!value) return;
+    const { deptKey, email, isManager } = selectedForDeletion;
 
-    const [deptKey, email, isManagerStr] = value.split('|');
-    const isManager = isManagerStr === 'true';
-
-    deleteEmployee(deptKey, email, isManager);
-}
-
-function deleteEmployee(deptKey, email, isManager) {
     if (isManager) {
         if (confirm('Це керівник. Видалити весь відділ?')) {
             delete departments[deptKey];
@@ -105,6 +135,7 @@ function deleteEmployee(deptKey, email, isManager) {
     } else {
         departments[deptKey].employees = departments[deptKey].employees.filter(e => e.email !== email);
     }
+
     saveDepartments();
     refreshUI();
 }
