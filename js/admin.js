@@ -32,22 +32,34 @@ function refreshUI() {
         opt.textContent = dept.name;
         deptSelect.appendChild(opt);
 
-        // Delete department
+        // Delete department (вирівнювання)
         const li = document.createElement('li');
-        li.innerHTML = `${dept.name} <button onclick="deleteDepartment('${key}')">Видалити</button>`;
+        li.innerHTML = `
+      <span style="display:inline-block; width:300px;">${dept.name}</span>
+      <button onclick="deleteDepartment('${key}')">Видалити</button>`;
         deptList.appendChild(li);
 
         // Manager
         const m = dept.manager;
         const managerLi = document.createElement('li');
-        managerLi.innerHTML = `👔 ${m.name} (${m.email}) ${m.phone ? `📞 ${m.phone}` : ""}
+        managerLi.innerHTML = `
+      👔 
+      <span style="display:inline-block; width:180px;">${m.name}</span>
+      <span style="display:inline-block; width:160px;">${dept.name}</span>
+      <span style="display:inline-block; width:240px;">${m.email}</span>
+      <span style="display:inline-block; width:160px;">${m.phone || ""}</span>
       <button onclick="deleteEmployee('${key}', '${m.email}', true)">Видалити</button>`;
         empList.appendChild(managerLi);
 
         // Employees
         dept.employees.forEach(emp => {
             const empLi = document.createElement('li');
-            empLi.innerHTML = `👤 ${emp.name} (${emp.email}) ${emp.phone ? `📞 ${emp.phone}` : ""}
+            empLi.innerHTML = `
+        👤 
+        <span style="display:inline-block; width:180px;">${emp.name}</span>
+        <span style="display:inline-block; width:160px;">${dept.name}</span>
+        <span style="display:inline-block; width:240px;">${emp.email}</span>
+        <span style="display:inline-block; width:160px;">${emp.phone || ""}</span>
         <button onclick="deleteEmployee('${key}', '${emp.email}', false)">Видалити</button>`;
             empList.appendChild(empLi);
         });
