@@ -26,8 +26,6 @@ function refreshUI() {
     const searchResults = document.getElementById('search-results');
     const editSearch = document.getElementById('edit-search');
     const editResults = document.getElementById('edit-results');
-    const editForm = document.getElementById('edit-form');
-    const editDeptSelect = document.getElementById('edit-dept');
 
     deptSelect.innerHTML = '';
     deleteDeptSelect.innerHTML = '';
@@ -35,44 +33,60 @@ function refreshUI() {
     empList.innerHTML = '';
     searchResults.innerHTML = '';
     editResults.innerHTML = '';
-    editDeptSelect.innerHTML = '';
     selectedForDeletion = null;
     selectedForEdit = null;
-    editForm.style.display = 'none';
+    document.getElementById('edit-form').style.display = 'none';
 
     for (const key in departments) {
         const dept = departments[key];
 
         // Dropdowns
-        deptSelect.appendChild(new Option(dept.name, key));
-        deleteDeptSelect.appendChild(new Option(dept.name, key));
-        editDeptSelect.appendChild(new Option(dept.name, key));
+        const opt = new Option(dept.name, key);
+        deptSelect.appendChild(opt);
 
-        // View-only department grid (кнопки фільтрів)
+        const delOpt = new Option(dept.name, key);
+        deleteDeptSelect.appendChild(delOpt);
+
+        const editOpt = new Option(dept.name, key);
+        document.getElementById('edit-dept').appendChild(new Option(dept.name, key));
+
+        // Фільтр
         const viewBtn = document.createElement('button');
         viewBtn.className = 'dept-filter-btn';
         viewBtn.textContent = dept.name;
         viewBtn.onclick = () => toggleDeptFilter(key, viewBtn);
-        if (activeDeptFilters.includes(key)) viewBtn.classList.add('active');
+        if (activeDeptFilters.includes(key)) {
+            viewBtn.classList.add('active');
+        }
         deptViewList.appendChild(viewBtn);
     }
 
-    // Список співробітників (з урахуванням фільтра)
+    // Вивід співробітників
     for (const key in departments) {
         if (activeDeptFilters.length && !activeDeptFilters.includes(key)) continue;
         const dept = departments[key];
 
-        // Manager
         const m = dept.manager;
-        empList.appendChild(createUserRow(m, dept.name, true));
+        empList.innerHTML += `
+      <li>
+        👔 <span style="display:inline-block; width:180px;">${m.name}</span>
+        <span style="display:inline-block; width:160px;">${dept.name}</span>
+        <span style="display:inline-block; width:240px;">${m.email}</span>
+        <span style="display:inline-block; width:160px;">${m.phone || ""}</span>
+      </li>`;
 
-        // Employees
         dept.employees.forEach(emp => {
-            empList.appendChild(createUserRow(emp, dept.name, false));
+            empList.innerHTML += `
+        <li>
+          👤 <span style="display:inline-block; width:180px;">${emp.name}</span>
+          <span style="display:inline-block; width:160px;">${dept.name}</span>
+          <span style="display:inline-block; width:240px;">${emp.email}</span>
+          <span style="display:inline-block; width:160px;">${emp.phone || ""}</span>
+        </li>`;
         });
     }
 
-    // Пошук видалення
+    // Пошук для видалення
     if (searchInput) {
         searchInput.oninput = () => {
             const val = searchInput.value.toLowerCase().trim();
@@ -86,15 +100,14 @@ function refreshUI() {
                 const m = dept.manager;
                 if (m.name.toLowerCase().includes(val) || m.email.toLowerCase().includes(val)) {
                     const li = document.createElement('li');
-                    li.innerHTML = `👔 ${m.name} (${m.email}) — ${dept.name}`;
+                    li.textContent = `👔 ${m.name} (${m.email}) — ${dept.name}`;
                     li.onclick = () => selectUserForDeletion(key, m.email, true, li);
                     searchResults.appendChild(li);
                 }
-
                 dept.employees.forEach(e => {
                     if (e.name.toLowerCase().includes(val) || e.email.toLowerCase().includes(val)) {
                         const li = document.createElement('li');
-                        li.innerHTML = `👤 ${e.name} (${e.email}) — ${dept.name}`;
+                        li.textContent = `👤 ${e.name} (${e.email}) — ${dept.name}`;
                         li.onclick = () => selectUserForDeletion(key, e.email, false, li);
                         searchResults.appendChild(li);
                     }
@@ -103,13 +116,13 @@ function refreshUI() {
         };
     }
 
-    // Пошук редагування
+    // Пошук для редагування
     if (editSearch) {
         editSearch.oninput = () => {
             const val = editSearch.value.toLowerCase().trim();
             editResults.innerHTML = '';
             selectedForEdit = null;
-            editForm.style.display = 'none';
+            document.getElementById('edit-form').style.display = 'none';
 
             if (!val) return;
 
@@ -118,33 +131,21 @@ function refreshUI() {
                 const m = dept.manager;
                 if (m.name.toLowerCase().includes(val) || m.email.toLowerCase().includes(val)) {
                     const li = document.createElement('li');
-                    li.innerHTML = `👔 ${m.name} (${m.email}) — ${dept.name}`;
-                    li.onclick = () => populateEditForm(key, m.email, true, m);
+                    li.textContent = `👔 ${m.name} (${m.email}) — ${dept.name}`;
+                    li.onclick = () => selectUserForEdit(key, m.email, true, m);
                     editResults.appendChild(li);
                 }
-
                 dept.employees.forEach(e => {
                     if (e.name.toLowerCase().includes(val) || e.email.toLowerCase().includes(val)) {
                         const li = document.createElement('li');
-                        li.innerHTML = `👤 ${e.name} (${e.email}) — ${dept.name}`;
-                        li.onclick = () => populateEditForm(key, e.email, false, e);
+                        li.textContent = `👤 ${e.name} (${e.email}) — ${dept.name}`;
+                        li.onclick = () => selectUserForEdit(key, e.email, false, e);
                         editResults.appendChild(li);
                     }
                 });
             }
         };
     }
-}
-
-function createUserRow(user, deptName, isManager) {
-    const li = document.createElement('li');
-    li.innerHTML = `
-        ${isManager ? '👔' : '👤'} 
-        <span style="display:inline-block; width:180px;">${user.name}</span>
-        <span style="display:inline-block; width:160px;">${deptName}</span>
-        <span style="display:inline-block; width:240px;">${user.email}</span>
-        <span style="display:inline-block; width:160px;">${user.phone || ""}</span>`;
-    return li;
 }
 
 function toggleDeptFilter(key, button) {
@@ -167,16 +168,6 @@ function selectUserForDeletion(deptKey, email, isManager, liElement) {
         const displayEmail = match[2].trim();
         document.getElementById('search-emp').value = `${displayName} (${displayEmail})`;
     }
-}
-
-function populateEditForm(deptKey, email, isManager, userObj) {
-    selectedForEdit = { deptKey, email, isManager, userObj };
-    document.getElementById('edit-name').value = userObj.name;
-    document.getElementById('edit-email').value = userObj.email;
-    document.getElementById('edit-phone').value = userObj.phone || "";
-    document.getElementById('edit-dept').value = deptKey;
-    document.getElementById('edit-form').style.display = 'flex';
-    document.getElementById('edit-search').value = `${userObj.name} (${userObj.email})`;
 }
 
 function deleteSelectedDepartment() {
@@ -211,33 +202,70 @@ function deleteSelectedEmployee() {
 
     saveDepartments();
     refreshUI();
+
+    // Очистити поле пошуку
+    document.getElementById('search-emp').value = '';
+    document.getElementById('search-results').innerHTML = '';
+    selectedForDeletion = null;
+}
+
+function selectUserForEdit(deptKey, email, isManager, data) {
+    selectedForEdit = { deptKey, email, isManager };
+    document.getElementById('edit-name').value = data.name;
+    document.getElementById('edit-email').value = data.email;
+    document.getElementById('edit-phone').value = data.phone || '';
+    document.getElementById('edit-dept').value = deptKey;
+    document.getElementById('edit-form').style.display = 'flex';
 }
 
 document.getElementById('edit-form').onsubmit = e => {
     e.preventDefault();
-    if (!selectedForEdit) return;
+    if (!selectedForEdit) {
+        alert("Оберіть співробітника для редагування.");
+        return;
+    }
 
-    const name = document.getElementById('edit-name').value.trim();
-    const email = document.getElementById('edit-email').value.trim();
-    const phone = document.getElementById('edit-phone').value.trim();
+    const oldDeptKey = selectedForEdit.deptKey;
+    const oldEmail = selectedForEdit.email;
+    const isManager = selectedForEdit.isManager;
+
+    const newName = document.getElementById('edit-name').value.trim();
+    const newEmail = document.getElementById('edit-email').value.trim();
+    const newPhone = document.getElementById('edit-phone').value.trim();
     const newDeptKey = document.getElementById('edit-dept').value;
 
-    const { deptKey, isManager, userObj } = selectedForEdit;
-
     if (isManager) {
-        departments[deptKey].manager = { name, email, phone };
-        if (deptKey !== newDeptKey) {
-            departments[newDeptKey].manager = { name, email, phone };
-            delete departments[deptKey];
+        departments[oldDeptKey].manager = { name: newName, email: newEmail, phone: newPhone };
+        if (oldDeptKey !== newDeptKey) {
+            departments[newDeptKey] = {
+                name: departments[oldDeptKey].name,
+                manager: departments[oldDeptKey].manager,
+                employees: departments[oldDeptKey].employees
+            };
+            delete departments[oldDeptKey];
         }
     } else {
-        departments[deptKey].employees = departments[deptKey].employees.filter(e => e.email !== userObj.email);
-        departments[newDeptKey].employees.push({ name, email, phone });
+        const emp = departments[oldDeptKey].employees.find(e => e.email === oldEmail);
+        if (!emp) return;
+
+        if (oldDeptKey === newDeptKey) {
+            emp.name = newName;
+            emp.email = newEmail;
+            emp.phone = newPhone;
+        } else {
+            departments[oldDeptKey].employees = departments[oldDeptKey].employees.filter(e => e.email !== oldEmail);
+            departments[newDeptKey].employees.push({ name: newName, email: newEmail, phone: newPhone });
+        }
     }
 
     saveDepartments();
     refreshUI();
-    e.target.reset();
+
+    // Очистити редагування
+    document.getElementById('edit-form').style.display = 'none';
+    document.getElementById('edit-search').value = '';
+    document.getElementById('edit-results').innerHTML = '';
+    selectedForEdit = null;
 };
 
 document.getElementById('add-dept-form').onsubmit = e => {
