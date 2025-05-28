@@ -13,9 +13,11 @@
       flex-direction: column;
       gap: 30px;
     }
+
     h1, h2 {
       text-align: center;
     }
+
     form {
       border: 1px solid #ccc;
       padding: 20px;
@@ -24,44 +26,66 @@
       flex-direction: column;
       gap: 10px;
     }
+
     label {
       font-weight: bold;
     }
+
     input, select, button {
       padding: 8px;
       font-size: 16px;
     }
+
     ul {
       list-style: none;
       padding-left: 0;
     }
+
     li {
       margin: 4px 0;
     }
-    .grid-list {
+
+    #dept-view-list {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      gap: 10px;
     }
-    .grid-list div {
-      border: 1px solid #ccc;
-      border-radius: 6px;
+
+    .dept-filter-btn {
       padding: 10px;
-      text-align: center;
-      background-color: #f9f9f9;
+      border: 1px solid #888;
+      background-color: #f0f0f0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
     }
-    .highlight {
-      background-color: #def;
-      padding: 2px 6px;
-      border-radius: 4px;
-      display: inline-block;
+
+    .dept-filter-btn:hover {
+      background-color: #e0e0e0;
+    }
+
+    .dept-filter-btn.active {
+      background-color: #d0f0d0;
+      border-color: #4caf50;
+      font-weight: bold;
+    }
+
+    #search-results li, #edit-results li {
+      cursor: pointer;
+    }
+
+    .form-section {
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body id="admin-body">
 <h1>Адмін-панель</h1>
 
-<form id="add-dept-form">
+<form id="add-dept-form" class="form-section">
   <h2>➕ Додати відділ</h2>
   <label>Ідентифікатор (англ): <input type="text" id="dept-key" required></label>
   <label>Назва відділу: <input type="text" id="dept-name" required></label>
@@ -71,7 +95,7 @@
   <button type="submit">Додати відділ</button>
 </form>
 
-<form id="add-emp-form">
+<form id="add-emp-form" class="form-section">
   <h2>➕ Додати співробітника</h2>
   <label>Відділ:
     <select id="emp-dept" required></select>
@@ -82,31 +106,46 @@
   <button type="submit">Додати співробітника</button>
 </form>
 
-<div>
-  <h2>🗑 Видалити відділ</h2>
-  <select id="delete-dept-select"></select>
-  <button onclick="deleteSelectedDepartment()">Видалити відділ</button>
-</div>
-
-<div>
+<div class="form-section">
   <h2>📋 Список відділів</h2>
-  <div id="dept-view-list" class="grid-list"></div>
+  <div id="dept-view-list"></div>
 </div>
 
-<div>
+<div class="form-section">
   <h2>📋 Список співробітників</h2>
   <ul id="emp-list"></ul>
 </div>
 
-<div>
-  <h2>🔻 видалення співробітника</h2>
-  <input type="text" id="search-emp" placeholder="Пошук за імʼям або email">
+<div class="form-section">
+  <h2>🔻 Видалення співробітника</h2>
+  <input type="text" id="search-emp" placeholder="Пошук за іменем або email">
   <ul id="search-results"></ul>
-  <button onclick="deleteSelectedEmployee()">Видалити обраного співробітника</button>
+  <button onclick="deleteSelectedEmployee()">Видалити співробітника</button>
+</div>
+
+<div class="form-section">
+  <h2>✏️ Редагувати співробітника</h2>
+  <input type="text" id="edit-search" placeholder="Пошук за іменем або email">
+  <ul id="edit-results"></ul>
+  <form id="edit-form" style="display:none;">
+    <label>Імʼя: <input type="text" id="edit-name" required></label>
+    <label>Email: <input type="email" id="edit-email" required></label>
+    <label>Телефон: <input type="text" id="edit-phone" required></label>
+    <label>Відділ:
+      <select id="edit-dept" required></select>
+    </label>
+    <button type="submit">Змінити</button>
+  </form>
+</div>
+
+<div class="form-section">
+  <h2>🗑 Видалити відділ</h2>
+  <select id="delete-dept-select"></select>
+  <button onclick="deleteSelectedDepartment()">Видалити</button>
 </div>
 
 <button onclick="window.location.href='index.html'">⬅ Назад до HeadCount</button>
 
-<script src="../js/admin.js"></script>
+<script src="js/admin.js"></script>
 </body>
 </html>
