@@ -16,28 +16,31 @@ function saveDepartments() {
 
 function refreshUI() {
     const deptSelect = document.getElementById('emp-dept');
-    const deptList = document.getElementById('dept-list');
+    const deleteDeptSelect = document.getElementById('delete-dept-select');
+    const deleteEmpSelect = document.getElementById('delete-emp-select');
+    const deptViewList = document.getElementById('dept-view-list');
     const empList = document.getElementById('emp-list');
 
     deptSelect.innerHTML = '';
-    deptList.innerHTML = '';
+    deleteDeptSelect.innerHTML = '';
+    deleteEmpSelect.innerHTML = '';
+    deptViewList.innerHTML = '';
     empList.innerHTML = '';
 
     for (const key in departments) {
         const dept = departments[key];
 
-        // Dropdown
-        const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = dept.name;
+        // Dropdowns
+        const opt = new Option(dept.name, key);
         deptSelect.appendChild(opt);
 
-        // Delete department (вирівнювання)
-        const li = document.createElement('li');
-        li.innerHTML = `
-      <span style="display:inline-block; width:300px;">${dept.name}</span>
-      <button onclick="deleteDepartment('${key}')">Видалити</button>`;
-        deptList.appendChild(li);
+        const delOpt = new Option(dept.name, key);
+        deleteDeptSelect.appendChild(delOpt);
+
+        // View-only department grid
+        const viewItem = document.createElement('div');
+        viewItem.textContent = dept.name;
+        deptViewList.appendChild(viewItem);
 
         // Manager
         const m = dept.manager;
@@ -47,9 +50,11 @@ function refreshUI() {
       <span style="display:inline-block; width:180px;">${m.name}</span>
       <span style="display:inline-block; width:160px;">${dept.name}</span>
       <span style="display:inline-block; width:240px;">${m.email}</span>
-      <span style="display:inline-block; width:160px;">${m.phone || ""}</span>
-      <button onclick="deleteEmployee('${key}', '${m.email}', true)">Видалити</button>`;
+      <span style="display:inline-block; width:160px;">${m.phone || ""}</span>`;
         empList.appendChild(managerLi);
+
+        const mgrOpt = new Option(`${m.name} (${m.email}) — ${dept.name}`, `${key}|${m.email}|true`);
+        deleteEmpSelect.appendChild(mgrOpt);
 
         // Employees
         dept.employees.forEach(emp => {
@@ -59,19 +64,37 @@ function refreshUI() {
         <span style="display:inline-block; width:180px;">${emp.name}</span>
         <span style="display:inline-block; width:160px;">${dept.name}</span>
         <span style="display:inline-block; width:240px;">${emp.email}</span>
-        <span style="display:inline-block; width:160px;">${emp.phone || ""}</span>
-        <button onclick="deleteEmployee('${key}', '${emp.email}', false)">Видалити</button>`;
+        <span style="display:inline-block; width:160px;">${emp.phone || ""}</span>`;
             empList.appendChild(empLi);
+
+            const empOpt = new Option(`${emp.name} (${emp.email}) — ${dept.name}`, `${key}|${emp.email}|false`);
+            deleteEmpSelect.appendChild(empOpt);
         });
     }
 }
 
-function deleteDepartment(key) {
+function deleteSelectedDepartment() {
+    const select = document.getElementById('delete-dept-select');
+    const key = select.value;
+    if (!key) return;
+
     if (confirm(`Ви точно хочете видалити відділ "${departments[key].name}"?`)) {
         delete departments[key];
         saveDepartments();
         refreshUI();
     }
+}
+
+function deleteSelectedEmployee() {
+    const select = document.getElementById('delete-emp-select');
+    const value = select.value;
+
+    if (!value) return;
+
+    const [deptKey, email, isManagerStr] = value.split('|');
+    const isManager = isManagerStr === 'true';
+
+    deleteEmployee(deptKey, email, isManager);
 }
 
 function deleteEmployee(deptKey, email, isManager) {

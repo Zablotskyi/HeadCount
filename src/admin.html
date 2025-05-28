@@ -7,7 +7,7 @@
     body {
       font-family: sans-serif;
       padding: 40px;
-      max-width: 800px;
+      max-width: 1000px;
       margin: auto;
       display: none;
       flex-direction: column;
@@ -38,6 +38,18 @@
     li {
       margin: 4px 0;
     }
+    .grid-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .grid-list div {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      background-color: #f9f9f9;
+    }
   </style>
 </head>
 <body id="admin-body">
@@ -66,16 +78,28 @@
 
 <div>
   <h2>🗑 Видалити відділ</h2>
-  <ul id="dept-list"></ul>
+  <select id="delete-dept-select"></select>
+  <button onclick="deleteSelectedDepartment()">Видалити відділ</button>
 </div>
 
 <div>
-  <h2>🗑 Видалити співробітника</h2>
+  <h2>📋 Список відділів</h2>
+  <div id="dept-view-list" class="grid-list"></div>
+</div>
+
+<div>
+  <h2>📋 Список співробітників</h2>
   <ul id="emp-list"></ul>
+</div>
+
+<div>
+  <h2>🔻 видалення співробітника</h2>
+  <select id="delete-emp-select"></select>
+  <button onclick="deleteSelectedEmployee()">Видалити співробітника</button>
 </div>
 
 <button onclick="window.location.href='index.html'">⬅ Назад до HeadCount</button>
 
-<script src="js/admin.js"></script>
+<script src="../js/admin.js"></script>
 </body>
 </html>
