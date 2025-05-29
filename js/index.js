@@ -71,6 +71,7 @@ function populateFilterButtons() {
         btn.onclick = () => toggleDeptFilter(key, btn);
         container.appendChild(btn);
     }
+    updateFilterButtonColors();
 }
 
 function toggleDeptFilter(key, button) {
@@ -82,6 +83,18 @@ function toggleDeptFilter(key, button) {
         button.classList.add("active");
     }
     buildInterface();
+}
+
+function updateFilterButtonColors() {
+    document.querySelectorAll(".dept-filter-btn").forEach((btn, index) => {
+        const deptKeys = Object.keys(departments);
+        const key = deptKeys[index];
+        const emails = [departments[key].manager.email, ...departments[key].employees.map(e => e.email)];
+        const hasRed = emails.some(email => localStorage.getItem(email) === "red");
+        const allGreen = emails.every(email => localStorage.getItem(email) === "green");
+
+        btn.style.backgroundColor = hasRed ? "#f88" : allGreen ? "#8f8" : "";
+    });
 }
 
 function buildInterface() {
@@ -116,6 +129,7 @@ function buildInterface() {
     });
 
     setPermissions();
+    updateFilterButtonColors();
 }
 
 function createNodeHTML(name, email, phone = "") {
@@ -197,6 +211,8 @@ function startHeadCount() {
             if (timeLabel) timeLabel.textContent = "";
         }
     });
+
+    updateFilterButtonColors();
 }
 
 function confirmPresence(email) {
@@ -226,6 +242,8 @@ function confirmPresence(email) {
             else if (by === "manager") label += " — підтвердив керівник";
             timeLabel.textContent = label;
         }
+
+        updateFilterButtonColors();
     }
 }
 
