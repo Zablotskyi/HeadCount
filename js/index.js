@@ -3,6 +3,7 @@ const ADMIN_EMAIL = "admin@company.com";
 
 let departments = JSON.parse(localStorage.getItem("departments")) || {};
 let currentUser = null;
+let activeDeptFilters = [];
 
 function login() {
     const email = document.getElementById("email-input").value.trim().toLowerCase();
@@ -51,30 +52,45 @@ function login() {
     document.querySelector(".tree").style.display = "flex";
 
     if (["security"].includes(currentUser.role)) {
-        populateFilterOptions();
+        populateFilterButtons();
     } else {
-        document.getElementById("department-filter").style.display = "none";
+        document.getElementById("department-filter-buttons").style.display = "none";
         document.getElementById("headcount-btn").style.display = "none";
     }
 
     buildInterface();
 }
 
-function populateFilterOptions() {
-    const filter = document.getElementById("department-filter");
-    filter.innerHTML = `<option value="all">Усі відділи</option>`;
+function populateFilterButtons() {
+    const container = document.getElementById("department-filter-buttons");
+    container.innerHTML = "";
     for (const key in departments) {
-        filter.innerHTML += `<option value="${key}">${departments[key].name}</option>`;
+        const btn = document.createElement("button");
+        btn.textContent = departments[key].name;
+        btn.className = "dept-filter-btn";
+        btn.onclick = () => toggleDeptFilter(key, btn);
+        container.appendChild(btn);
     }
 }
 
+function toggleDeptFilter(key, button) {
+    if (activeDeptFilters.includes(key)) {
+        activeDeptFilters = activeDeptFilters.filter(k => k !== key);
+        button.classList.remove("active");
+    } else {
+        activeDeptFilters.push(key);
+        button.classList.add("active");
+    }
+    buildInterface();
+}
+
 function buildInterface() {
-    const filterValue = document.getElementById("department-filter")?.value || currentUser.deptKey;
     const container = document.getElementById("departments-container");
     container.innerHTML = "";
 
     const visibleDepartments = ["security"].includes(currentUser.role)
-        ? Object.entries(departments).filter(([key]) => filterValue === "all" || key === filterValue)
+        ? Object.entries(departments).filter(([key]) =>
+            activeDeptFilters.length === 0 || activeDeptFilters.includes(key))
         : [[currentUser.deptKey, departments[currentUser.deptKey]]];
 
     visibleDepartments.forEach(([deptKey, dept]) => {
@@ -161,11 +177,10 @@ function setPermissions() {
 function startHeadCount() {
     if (!["security"].includes(currentUser.role)) return;
 
-    const filterValue = document.getElementById("department-filter")?.value;
     const emails = [];
 
     Object.entries(departments).forEach(([key, dept]) => {
-        if (filterValue === "all" || key === filterValue) {
+        if (activeDeptFilters.length === 0 || activeDeptFilters.includes(key)) {
             emails.push(dept.manager.email);
             dept.employees.forEach((e) => emails.push(e.email));
         }
