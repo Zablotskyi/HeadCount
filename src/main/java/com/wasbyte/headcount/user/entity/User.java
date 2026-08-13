@@ -107,7 +107,7 @@ public class User {
     )
     private Set<Role> roles = new HashSet<>();
 
-    protected User() {
+    public User() {
     }
 
     public Long getId() { return id; }

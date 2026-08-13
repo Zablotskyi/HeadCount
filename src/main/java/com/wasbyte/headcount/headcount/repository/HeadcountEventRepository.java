@@ -9,4 +9,6 @@ import java.util.List;
 public interface HeadcountEventRepository extends JpaRepository<HeadcountEvent, Long> {
 
     List<HeadcountEvent> findByStatus(HeadcountEventStatus status);
+
+    boolean existsByScopeOrganizationUnitIdAndStatus(Long organizationUnitId, HeadcountEventStatus status);
 }

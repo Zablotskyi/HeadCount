@@ -65,7 +65,7 @@ public class HeadcountEvent {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected HeadcountEvent() {
+    public HeadcountEvent() {
     }
 
     public Long getId() { return id; }

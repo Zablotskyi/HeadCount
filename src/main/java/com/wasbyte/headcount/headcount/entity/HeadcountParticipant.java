@@ -78,7 +78,7 @@ public class HeadcountParticipant {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected HeadcountParticipant() {
+    public HeadcountParticipant() {
     }
 
     public Long getId() { return id; }

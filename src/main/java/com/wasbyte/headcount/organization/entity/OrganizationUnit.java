@@ -53,7 +53,7 @@ public class OrganizationUnit {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected OrganizationUnit() {
+    public OrganizationUnit() {
     }
 
     public Long getId() { return id; }

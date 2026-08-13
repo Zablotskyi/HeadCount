@@ -26,7 +26,7 @@ public class Role {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected Role() {
+    public Role() {
     }
 
     public Long getId() { return id; }
