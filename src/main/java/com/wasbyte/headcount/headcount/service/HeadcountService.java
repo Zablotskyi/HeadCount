@@ -81,6 +81,10 @@ public class HeadcountService {
         return participantRepository.findByEventId(eventId);
     }
 
+    public HeadcountEvent findEventById(Long eventId) {
+        return findEvent(eventId);
+    }
+
     @Transactional
     public HeadcountParticipant confirmSafe(Long eventId, Long employeeId,
                                             Long confirmedById, String confirmationSource) {

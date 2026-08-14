@@ -1,0 +1,13 @@
+package com.wasbyte.headcount.headcount.dto;
+
+import com.wasbyte.headcount.headcount.entity.HeadcountParticipantStatus;
+
+import java.time.LocalDateTime;
+
+public record HeadcountParticipantResponse(
+        Long id, Long eventId, Long employeeId,
+        String employeeNameSnapshot, String resourceNumberSnapshot,
+        String organizationPathSnapshot, HeadcountParticipantStatus status,
+        LocalDateTime confirmedAt, Long confirmedById, String confirmationSource,
+        String helpMessage, LocalDateTime helpRequestedAt, long version) {
+}

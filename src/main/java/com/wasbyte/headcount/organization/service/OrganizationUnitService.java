@@ -52,6 +52,17 @@ public class OrganizationUnitService {
     }
 
     @Transactional
+    public OrganizationUnit update(Long unitId, OrganizationUnit changes) {
+        OrganizationUnit unit = findById(unitId);
+        unit.setName(changes.getName());
+        unit.setCode(changes.getCode());
+        unit.setType(changes.getType());
+        unit.setSortOrder(changes.getSortOrder());
+        unit.setUpdatedAt(LocalDateTime.now());
+        return unit;
+    }
+
+    @Transactional
     public OrganizationUnit changeParent(Long unitId, Long parentId) {
         OrganizationUnit unit = findById(unitId);
         OrganizationUnit parent = parentId == null ? null : findById(parentId);

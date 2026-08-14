@@ -10,11 +10,17 @@ import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @EntityGraph(attributePaths = "roles")
+    @Override
+    @EntityGraph(attributePaths = {"roles", "organizationUnit", "lineManager"})
+    Optional<User> findById(Long id);
+
+    @EntityGraph(attributePaths = {"roles", "organizationUnit", "lineManager"})
     Optional<User> findByUsername(String username);
 
+    @EntityGraph(attributePaths = {"roles", "organizationUnit", "lineManager"})
     Optional<User> findByEmail(String email);
 
+    @EntityGraph(attributePaths = {"roles", "organizationUnit", "lineManager"})
     Optional<User> findByResourceNumber(String resourceNumber);
 
     boolean existsByUsername(String username);

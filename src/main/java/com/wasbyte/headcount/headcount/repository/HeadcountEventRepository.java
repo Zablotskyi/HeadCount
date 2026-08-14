@@ -3,10 +3,16 @@ package com.wasbyte.headcount.headcount.repository;
 import com.wasbyte.headcount.headcount.entity.HeadcountEvent;
 import com.wasbyte.headcount.headcount.entity.HeadcountEventStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface HeadcountEventRepository extends JpaRepository<HeadcountEvent, Long> {
+
+    @Override
+    @EntityGraph(attributePaths = {"scopeOrganizationUnit", "startedBy", "closedBy", "cancelledBy"})
+    Optional<HeadcountEvent> findById(Long id);
 
     List<HeadcountEvent> findByStatus(HeadcountEventStatus status);
 

@@ -26,6 +26,7 @@ public class SecurityConfig {
                                 "/css/**", "/js/**", "/images/**",
                                 "/actuator/health"
                         ).permitAll()
+                        .requestMatchers("/api/**").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/security/**").hasAnyRole(
                                 "SECURITY_OFFICER", "SECURITY_MANAGER", "ADMIN")
