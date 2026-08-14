@@ -5,7 +5,9 @@ let users = [];
 document.getElementById("logout").addEventListener("click", logout);
 document.getElementById("all-users").addEventListener("click", loadUsers);
 document.getElementById("search-form").addEventListener("submit", async event => {
-    event.preventDefault(); await run(() => loadUsers(new FormData(event.currentTarget).get("q")));
+    event.preventDefault();
+    const form = event.currentTarget;
+    await run(() => loadUsers(new FormData(form).get("q")));
 });
 document.getElementById("unit-form").addEventListener("submit", createUnit);
 document.getElementById("user-form").addEventListener("submit", createUser);
@@ -46,13 +48,17 @@ async function loadUsers(query) {
 }
 
 async function createUnit(event) {
-    event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget));
-    await run(async () => { await apiFetch("/api/organization-units", {method:"POST", body:JSON.stringify({...data, parentId:numberOrNull(data.parentId), sortOrder:Number(data.sortOrder)})}); event.currentTarget.reset(); await loadUnits(); showMessage("Unit створено", "success"); });
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    await run(async () => { await apiFetch("/api/organization-units", {method:"POST", body:JSON.stringify({...data, parentId:numberOrNull(data.parentId), sortOrder:Number(data.sortOrder)})}); form.reset(); await loadUnits(); showMessage("Unit створено", "success"); });
 }
 
 async function createUser(event) {
-    event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget));
-    await run(async () => { await apiFetch("/api/users", {method:"POST", body:JSON.stringify({...data, organizationUnitId:numberOrNull(data.organizationUnitId)})}); event.currentTarget.reset(); await loadUsers(); showMessage("Користувача створено", "success"); });
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    await run(async () => { await apiFetch("/api/users", {method:"POST", body:JSON.stringify({...data, organizationUnitId:numberOrNull(data.organizationUnitId)})}); form.reset(); await loadUsers(); showMessage("Користувача створено", "success"); });
 }
 
 async function changeParent(unit) { const value = window.prompt("Новий parent ID (порожньо = root):", unit.parentId || ""); if (value === null) return; await mutateUnit(unit.id, "parent", {parentId:numberOrNull(value)}); }
