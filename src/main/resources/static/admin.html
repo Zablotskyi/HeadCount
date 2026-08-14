@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HeadCount Admin</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#f3f4f6;color:#1f2937}header{display:flex;align-items:center;gap:1rem;padding:1rem 2rem;background:#172554;color:white}header h1{flex:1;margin:0}header a{color:white}main{max-width:1200px;margin:auto;padding:1.5rem}.panel{background:white;padding:1rem;border-radius:.6rem;margin-bottom:1rem}form{display:flex;gap:.5rem;flex-wrap:wrap}input,select,button{padding:.5rem}table{width:100%;border-collapse:collapse;margin-top:1rem}th,td{padding:.5rem;border-bottom:1px solid #ddd;text-align:left}.actions{display:flex;gap:.35rem;flex-wrap:wrap}.message{padding:.8rem;margin-bottom:1rem;background:#dbeafe}.message.error{background:#fee2e2}.message.success{background:#dcfce7}
+</style></head><body>
+<header><h1>Адміністрування HeadCount</h1><a href="/index.html">Основна сторінка</a><button id="logout">Вийти</button></header>
+<main><div id="message-container" hidden></div>
+<section class="panel"><h2>Organization Units</h2>
+<form id="unit-form"><input name="name" placeholder="Назва" required><input name="code" placeholder="Код"><select name="type" required><option value="">Тип</option><option>ORGANIZATION</option><option>COUNTRY</option><option>REGION</option><option>OFFICE</option><option>DEPARTMENT</option><option>UNIT</option></select><select name="parentId" class="unit-select"><option value="">Без parent</option></select><input name="sortOrder" type="number" value="0" required><button>Створити</button></form>
+<table><thead><tr><th>Назва</th><th>Тип</th><th>Parent</th><th>Manager</th><th>Active</th><th>Дії</th></tr></thead><tbody id="unit-table"></tbody></table></section>
+<section class="panel"><h2>Users</h2><form id="search-form"><input name="q" placeholder="Username, ім’я, email, resource #"><button>Пошук</button><button type="button" id="all-users">Усі</button></form>
+<details><summary>Створити користувача</summary><form id="user-form"><input name="username" placeholder="Username" required><input name="resourceNumber" placeholder="Resource #" required><input name="firstName" placeholder="Ім’я" required><input name="lastName" placeholder="Прізвище" required><input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Пароль (мін. 8)" minlength="8" required><input name="timeZone" value="Europe/Kyiv" placeholder="Time zone" required><select name="organizationUnitId" class="unit-select"><option value="">Без unit</option></select><button>Створити</button></form></details>
+<table><thead><tr><th>User</th><th>Unit</th><th>Status</th><th>Roles</th><th>Дії</th></tr></thead><tbody id="user-table"></tbody></table></section></main>
+<script type="module" src="/js/admin.js"></script></body></html>

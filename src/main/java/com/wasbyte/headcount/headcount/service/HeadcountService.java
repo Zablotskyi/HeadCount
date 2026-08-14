@@ -24,6 +24,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -83,6 +84,14 @@ public class HeadcountService {
 
     public HeadcountEvent findEventById(Long eventId) {
         return findEvent(eventId);
+    }
+
+    public Optional<HeadcountEvent> findActiveEvent(Long scopeOrganizationUnitId) {
+        if (scopeOrganizationUnitId == null) {
+            return eventRepository.findFirstByStatusOrderByStartedAtDesc(HeadcountEventStatus.ACTIVE);
+        }
+        return eventRepository.findFirstByStatusAndScopeOrganizationUnitIdOrderByStartedAtDesc(
+                HeadcountEventStatus.ACTIVE, scopeOrganizationUnitId);
     }
 
     @Transactional

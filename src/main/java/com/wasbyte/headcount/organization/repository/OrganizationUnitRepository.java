@@ -8,4 +8,6 @@ import java.util.List;
 public interface OrganizationUnitRepository extends JpaRepository<OrganizationUnit, Long> {
 
     List<OrganizationUnit> findByParentId(Long parentId);
+
+    List<OrganizationUnit> findByParentIsNullOrderBySortOrderAscNameAsc();
 }

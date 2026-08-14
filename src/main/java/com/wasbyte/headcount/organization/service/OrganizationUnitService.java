@@ -37,6 +37,10 @@ public class OrganizationUnitService {
         return organizationUnitRepository.findByParentId(parentId);
     }
 
+    public List<OrganizationUnit> getRoots() {
+        return organizationUnitRepository.findByParentIsNullOrderBySortOrderAscNameAsc();
+    }
+
     @Transactional
     public OrganizationUnit create(OrganizationUnit unit) {
         if (unit.getId() != null) {

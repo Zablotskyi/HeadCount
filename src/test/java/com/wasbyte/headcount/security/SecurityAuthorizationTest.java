@@ -103,6 +103,26 @@ class SecurityAuthorizationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    @WithMockUser(roles = "EMPLOYEE")
+    void employeeCannotAccessAdminHtml() throws Exception {
+        mockMvc.perform(get("/admin.html"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminCanAccessAdminHtml() throws Exception {
+        mockMvc.perform(get("/admin.html"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void rootRedirectsUnauthenticatedUserToLogin() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().is3xxRedirection());
+    }
+
     @TestConfiguration
     static class TestEndpointsConfiguration {
 

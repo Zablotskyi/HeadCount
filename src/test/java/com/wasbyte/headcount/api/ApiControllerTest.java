@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
 
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
@@ -69,8 +70,26 @@ class ApiControllerTest {
         mockMvc = webAppContextSetup(context).apply(springSecurity()).build();
     }
 
+    @Test
+    void csrfEndpointReturnsTokenMetadata() throws Exception {
+        mockMvc.perform(get("/api/csrf").with(user(principal(7L, "EMPLOYEE"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.headerName").value("X-CSRF-TOKEN"));
+    }
+
     @Nested
     class OrganizationApi {
+
+        @Test
+        void rootsReturn200() throws Exception {
+            when(organizationUnitService.getRoots()).thenReturn(List.of(unit("Global", "GLOBAL")));
+
+            mockMvc.perform(get("/api/organization-units/roots")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].name").value("Global"));
+        }
 
         @Test
         void getExistingReturns200() throws Exception {
@@ -144,6 +163,42 @@ class ApiControllerTest {
 
     @Nested
     class UserApi {
+
+        @Test
+        void currentUserComesFromPrincipalId() throws Exception {
+            User found = mock(User.class);
+            Role employee = new Role(); employee.setName("EMPLOYEE");
+            when(found.getId()).thenReturn(77L);
+            when(found.getUsername()).thenReturn("jsmith");
+            when(found.getFirstName()).thenReturn("John");
+            when(found.getLastName()).thenReturn("Smith");
+            when(found.getRoles()).thenReturn(new HashSet<>(Set.of(employee)));
+            when(userService.findById(77L)).thenReturn(found);
+
+            mockMvc.perform(get("/api/users/me").with(user(principal(77L, "EMPLOYEE"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(77))
+                    .andExpect(jsonPath("$.username").value("jsmith"))
+                    .andExpect(jsonPath("$.roles[0]").value("EMPLOYEE"));
+            verify(userService).findById(77L);
+        }
+
+        @Test
+        void adminCanListAndSearchUsers() throws Exception {
+            when(userService.findAll()).thenReturn(List.of(userEntity("jsmith")));
+            when(userService.search("john")).thenReturn(List.of(userEntity("jsmith")));
+
+            mockMvc.perform(get("/api/users").with(user(principal(1L, "ADMIN"))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$[0].username").value("jsmith"));
+            mockMvc.perform(get("/api/users/search?q=john").with(user(principal(1L, "ADMIN"))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$[0].username").value("jsmith"));
+        }
+
+        @Test
+        void employeeCannotListUsers() throws Exception {
+            mockMvc.perform(get("/api/users").with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isForbidden());
+        }
 
         @Test
         void getExistingReturns200WithoutPasswordHash() throws Exception {
@@ -222,6 +277,19 @@ class ApiControllerTest {
 
     @Nested
     class HeadcountApi {
+
+        @Test
+        void activeEventLookupReturnsEventOr204() throws Exception {
+            when(headcountService.findActiveEvent(10L)).thenReturn(Optional.of(event()));
+            when(headcountService.findActiveEvent(11L)).thenReturn(Optional.empty());
+
+            mockMvc.perform(get("/api/headcount/events/active?scopeOrganizationUnitId=10")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+            mockMvc.perform(get("/api/headcount/events/active?scopeOrganizationUnitId=11")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isNoContent());
+        }
 
         @Test
         void createEventReturns201AndUsesPrincipalId() throws Exception {

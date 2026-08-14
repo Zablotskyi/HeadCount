@@ -27,7 +27,7 @@ public class SecurityConfig {
                                 "/actuator/health"
                         ).permitAll()
                         .requestMatchers("/api/**").authenticated()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin.html", "/admin/**").hasRole("ADMIN")
                         .requestMatchers("/security/**").hasAnyRole(
                                 "SECURITY_OFFICER", "SECURITY_MANAGER", "ADMIN")
                         .requestMatchers("/headcount/manage/**").hasAnyRole(
@@ -37,7 +37,9 @@ public class SecurityConfig {
                         .requestMatchers("/headcount/**", "/profile/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form.permitAll())
+                .formLogin(form -> form
+                        .defaultSuccessUrl("/index.html", true)
+                        .permitAll())
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout")

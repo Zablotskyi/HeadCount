@@ -30,4 +30,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByResourceNumber(String resourceNumber);
 
     List<User> findByOrganizationUnitIdInAndEnabledTrue(Set<Long> organizationUnitIds);
+
+    @Override
+    @EntityGraph(attributePaths = {"roles", "organizationUnit", "lineManager"})
+    List<User> findAll();
+
+    @EntityGraph(attributePaths = {"roles", "organizationUnit", "lineManager"})
+    List<User> findDistinctByUsernameContainingIgnoreCaseOrFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrResourceNumberContainingIgnoreCase(
+            String username, String firstName, String lastName, String email, String resourceNumber);
 }

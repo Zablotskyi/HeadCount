@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -46,6 +47,20 @@ public class UserService {
     public User findByResourceNumber(String resourceNumber) {
         return userRepository.findByResourceNumber(resourceNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found by resource number: " + resourceNumber));
+    }
+
+    public List<User> findAll() {
+        return userRepository.findAll();
+    }
+
+    public List<User> search(String query) {
+        String value = query == null ? "" : query.trim();
+        if (value.isEmpty()) {
+            return findAll();
+        }
+        return userRepository
+                .findDistinctByUsernameContainingIgnoreCaseOrFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrResourceNumberContainingIgnoreCase(
+                        value, value, value, value, value);
     }
 
     @Transactional

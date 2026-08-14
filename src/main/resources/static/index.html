@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HeadCount</title>
+    <style>
+        :root { font-family: system-ui, sans-serif; color: #1f2937; background: #f3f4f6; }
+        body { margin: 0; } header { display:flex; gap:1rem; align-items:center; padding:1rem 2rem; background:#172554; color:white; }
+        header h1 { margin:0; flex:1; } button, input, select, textarea { padding:.55rem; }
+        button { cursor:pointer; } main { max-width:1100px; margin:auto; padding:1.5rem; }
+        .toolbar, .event { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; background:white; padding:1rem; border-radius:.6rem; margin-bottom:1rem; }
+        .message { padding:.8rem; margin-bottom:1rem; border-radius:.4rem; background:#dbeafe; }.message.error{background:#fee2e2}.message.success{background:#dcfce7}
+        .tree, .participants { display:grid; gap:.75rem; }.unit { background:white; border-left:4px solid #64748b; padding:.8rem; margin-left:calc(var(--depth) * 1.25rem); }
+        .participant { background:white; padding:1rem; border-radius:.5rem; border-left:7px solid #ef4444; }.participant.SAFE{border-color:#22c55e}.participant.NEED_HELP{border-color:#f59e0b;background:#fffbeb}
+        .participant-actions { display:flex; gap:.5rem; margin-top:.75rem; }.muted{color:#64748b;font-size:.9rem}.admin-link{color:white}
+    </style>
+</head>
+<body>
+<header><h1>HeadCount</h1><span id="current-user"></span><a id="admin-link" class="admin-link" href="/admin.html" hidden>Адміністрування</a><button id="logout">Вийти</button></header>
+<main>
+    <div id="message-container" hidden></div>
+    <section class="toolbar">
+        <label>Область <select id="scope-select"></select></label>
+        <input id="event-title" value="HeadCount" aria-label="Назва події">
+        <button id="start-headcount" hidden>Оголосити HeadCount</button>
+        <button id="refresh">Оновити</button>
+    </section>
+    <section id="active-event" class="event"><strong>Активної події немає</strong></section>
+    <h2>Організаційна структура</h2><section id="organization-tree" class="tree"></section>
+    <h2>Учасники</h2><section id="participants" class="participants"></section>
+</main>
+<script type="module" src="/js/index.js"></script>
+</body>
+</html>

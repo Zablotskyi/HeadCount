@@ -9,6 +9,7 @@ import com.wasbyte.headcount.user.dto.RoleAssignmentRequest;
 import com.wasbyte.headcount.user.dto.SetUserActiveRequest;
 import com.wasbyte.headcount.user.dto.UpdateUserProfileRequest;
 import com.wasbyte.headcount.user.dto.UserResponse;
+import com.wasbyte.headcount.user.dto.CurrentUserResponse;
 import com.wasbyte.headcount.user.entity.User;
 import com.wasbyte.headcount.user.mapper.UserMapper;
 import com.wasbyte.headcount.user.service.RoleService;
@@ -17,6 +18,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.wasbyte.headcount.security.UserPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -52,6 +56,27 @@ public class UserController {
     @GetMapping("/{id}")
     public UserResponse getById(@PathVariable Long id) {
         return mapper.toResponse(userService.findById(id));
+    }
+
+    @GetMapping("/me")
+    public CurrentUserResponse getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
+        User user = userService.findById(principal.getUserId());
+        return new CurrentUserResponse(
+                user.getId(), user.getUsername(), user.getFirstName(), user.getLastName(),
+                user.getOrganizationUnit() == null ? null : user.getOrganizationUnit().getId(),
+                user.getRoles().stream().map(role -> role.getName()).collect(java.util.stream.Collectors.toSet()));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<UserResponse> getAll() {
+        return userService.findAll().stream().map(mapper::toResponse).toList();
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<UserResponse> search(@RequestParam String q) {
+        return userService.search(q).stream().map(mapper::toResponse).toList();
     }
 
     @GetMapping("/by-username/{username}")

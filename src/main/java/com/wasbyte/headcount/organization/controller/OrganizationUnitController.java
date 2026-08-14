@@ -45,6 +45,11 @@ public class OrganizationUnitController {
         return mapper.toResponse(service.findById(id));
     }
 
+    @GetMapping("/roots")
+    public List<OrganizationUnitResponse> getRoots() {
+        return service.getRoots().stream().map(mapper::toResponse).toList();
+    }
+
     @GetMapping("/{id}/children")
     public List<OrganizationUnitResponse> getChildren(@PathVariable Long id) {
         return service.getChildren(id).stream().map(mapper::toResponse).toList();

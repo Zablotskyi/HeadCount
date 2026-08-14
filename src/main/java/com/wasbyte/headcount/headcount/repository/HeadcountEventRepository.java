@@ -16,5 +16,12 @@ public interface HeadcountEventRepository extends JpaRepository<HeadcountEvent, 
 
     List<HeadcountEvent> findByStatus(HeadcountEventStatus status);
 
+    @EntityGraph(attributePaths = {"scopeOrganizationUnit", "startedBy", "closedBy", "cancelledBy"})
+    Optional<HeadcountEvent> findFirstByStatusOrderByStartedAtDesc(HeadcountEventStatus status);
+
+    @EntityGraph(attributePaths = {"scopeOrganizationUnit", "startedBy", "closedBy", "cancelledBy"})
+    Optional<HeadcountEvent> findFirstByStatusAndScopeOrganizationUnitIdOrderByStartedAtDesc(
+            HeadcountEventStatus status, Long scopeOrganizationUnitId);
+
     boolean existsByScopeOrganizationUnitIdAndStatus(Long organizationUnitId, HeadcountEventStatus status);
 }
