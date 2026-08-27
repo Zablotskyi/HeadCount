@@ -11,6 +11,8 @@ document.getElementById("search-form").addEventListener("submit", async event =>
     await run(() => loadUsers(new FormData(form).get("q")));
 });
 document.getElementById("unit-form").addEventListener("submit", createUnit);
+document.getElementById("edit-unit-form").addEventListener("submit", updateUnit);
+document.getElementById("cancel-edit-unit").addEventListener("click", () => document.getElementById("edit-unit-dialog").close());
 document.getElementById("user-form").addEventListener("submit", createUser);
 document.getElementById("edit-user-form").addEventListener("submit", updateUser);
 document.getElementById("cancel-edit-user").addEventListener("click", () => document.getElementById("edit-user-dialog").close());
@@ -30,12 +32,16 @@ async function loadUnits() {
         const first = select.options[0]; select.replaceChildren(first);
         units.forEach(unit => select.add(new Option(`${"— ".repeat(unit.depth)}${unit.name}`, unit.id)));
     });
+    renderUnitTable();
+}
+
+function renderUnitTable() {
     const body = document.getElementById("unit-table"); body.replaceChildren();
     units.forEach(unit => {
         const row = body.insertRow();
-        appendCells(row, [`${"— ".repeat(unit.depth)}${unit.name}`, unit.type, unit.parentId || "—", unit.managerId || "—", unit.active ? "Так" : "Ні"]);
+        appendCells(row, [`${"— ".repeat(unit.depth)}${unit.name}`, unit.code, unit.type, unitName(unit.parentId), managerName(unit.managerId), unit.sortOrder, unit.active ? "Так" : "Ні"]);
         const actions = row.insertCell(); actions.className = "actions";
-        addButton(actions, "Parent", () => changeParent(unit)); addButton(actions, "Manager", () => assignManager(unit));
+        addButton(actions, "Редагувати", () => editUnit(unit)); addButton(actions, "Змінити батьківський", () => changeParent(unit)); addButton(actions, "Керівник", () => assignManager(unit));
         addButton(actions, unit.active ? "Деактивувати" : "Активувати", () => mutateUnit(unit.id, "active", {active: !unit.active}));
     });
 }
@@ -43,6 +49,7 @@ async function loadUnits() {
 async function loadUsers(query) {
     users = await apiFetch(query?.trim() ? `/api/users/search?q=${encodeURIComponent(query.trim())}` : "/api/users");
     populateUserSelects();
+    renderUnitTable();
     const body = document.getElementById("user-table"); body.replaceChildren();
     users.forEach(user => {
         const row = body.insertRow();
@@ -58,7 +65,7 @@ async function createUnit(event) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form));
-    await run(async () => { await apiFetch("/api/organization-units", {method:"POST", body:JSON.stringify({...data, parentId:numberOrNull(data.parentId), sortOrder:Number(data.sortOrder)})}); form.reset(); await loadUnits(); showMessage("Unit створено", "success"); });
+    await run(async () => { await apiFetch("/api/organization-units", {method:"POST", body:JSON.stringify({...data, parentId:numberOrNull(data.parentId), sortOrder:Number(data.sortOrder)})}); form.reset(); await loadUnits(); showMessage("Організаційний підрозділ створено", "success"); });
 }
 
 async function createUser(event) {
@@ -73,9 +80,34 @@ async function createUser(event) {
     });
 }
 
-async function changeParent(unit) { const value = window.prompt("Новий parent ID (порожньо = root):", unit.parentId || ""); if (value === null) return; await mutateUnit(unit.id, "parent", {parentId:numberOrNull(value)}); }
-async function assignManager(unit) { const value = window.prompt("Manager user ID (порожньо = прибрати):", unit.managerId || ""); if (value === null) return; await mutateUnit(unit.id, "manager", {managerId:numberOrNull(value)}); }
-async function mutateUnit(id, action, body) { await run(async () => { await apiFetch(`/api/organization-units/${id}/${action}`, {method:"PATCH", body:JSON.stringify(body)}); await loadUnits(); showMessage("Unit оновлено", "success"); }); }
+function editUnit(unit) {
+    const form = document.getElementById("edit-unit-form");
+    ["id", "name", "code", "type", "sortOrder"].forEach(field => { form.elements[field].value = unit[field] ?? ""; });
+    document.getElementById("edit-unit-dialog").showModal();
+}
+async function updateUnit(event) {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const id = data.id;
+    delete data.id;
+    data.sortOrder = Number(data.sortOrder);
+    await run(async () => {
+        await apiFetch(`/api/organization-units/${id}`, {method:"PUT", body:JSON.stringify(data)});
+        document.getElementById("edit-unit-dialog").close();
+        await loadUnits();
+        showMessage("Організаційний підрозділ оновлено", "success");
+    });
+}
+function changeParent(unit) {
+    const descendantIds = descendantIdsOf(unit);
+    const options = units.filter(candidate => candidate.id !== unit.id && !descendantIds.has(candidate.id)).map(candidate => ({value:candidate.id, label:`${"— ".repeat(candidate.depth)}${candidate.name}`}));
+    openAssignment(`/api/organization-units/${unit.id}/parent`, "parentId", "Зміна батьківського підрозділу", "Батьківський підрозділ", "Кореневий підрозділ", unit.parentId, options, loadUnits, "Батьківський підрозділ оновлено");
+}
+function assignManager(unit) {
+    const options = users.map(user => ({value:user.id, label:`${displayName(user)} (${user.username})`}));
+    openAssignment(`/api/organization-units/${unit.id}/manager`, "managerId", "Призначення керівника", "Керівник", "Без керівника", unit.managerId, options, loadUnits, "Керівника оновлено");
+}
+async function mutateUnit(id, action, body) { await run(async () => { await apiFetch(`/api/organization-units/${id}/${action}`, {method:"PATCH", body:JSON.stringify(body)}); await loadUnits(); showMessage("Організаційний підрозділ оновлено", "success"); }); }
 
 async function editProfile(user) {
     const form = document.getElementById("edit-user-form");
@@ -98,18 +130,18 @@ async function updateUser(event) {
 }
 function assignUnit(user) {
     const options = units.map(unit => ({value:unit.id, label:`${"— ".repeat(unit.depth)}${unit.name}`}));
-    openAssignment(user, "organization-unit", "Підрозділ користувача", "Підрозділ", "organizationUnitId", user.organizationUnitId, options);
+    openAssignment(`/api/users/${user.id}/organization-unit`, "organizationUnitId", "Підрозділ користувача", "Підрозділ", "Без підрозділу", user.organizationUnitId, options, loadUsers, "Користувача оновлено");
 }
 function assignLineManager(user) {
     const options = users.filter(manager => manager.id !== user.id).map(manager => ({value:manager.id, label:`${displayName(manager)} (${manager.username})`}));
-    openAssignment(user, "line-manager", "Лінійний менеджер користувача", "Лінійний менеджер", "lineManagerId", user.lineManagerId, options);
+    openAssignment(`/api/users/${user.id}/line-manager`, "lineManagerId", "Лінійний менеджер користувача", "Лінійний менеджер", "Без лінійного менеджера", user.lineManagerId, options, loadUsers, "Користувача оновлено");
 }
-function openAssignment(user, action, title, label, field, currentValue, options) {
-    pendingAssignment = {user, action, field};
+function openAssignment(url, field, title, label, emptyLabel, currentValue, options, reload, successMessage) {
+    pendingAssignment = {url, field, reload, successMessage};
     document.getElementById("assignment-title").textContent = title;
     document.getElementById("assignment-label").textContent = label;
     const select = document.getElementById("assignment-value");
-    select.replaceChildren(new Option("Не призначено", ""), ...options.map(option => new Option(option.label, option.value)));
+    select.replaceChildren(new Option(emptyLabel, ""), ...options.map(option => new Option(option.label, option.value)));
     select.value = currentValue ?? "";
     document.getElementById("assignment-dialog").showModal();
 }
@@ -117,13 +149,13 @@ async function saveAssignment(event) {
     event.preventDefault();
     if (!pendingAssignment) return;
     const value = numberOrNull(new FormData(event.currentTarget).get("value"));
-    const {user, action, field} = pendingAssignment;
+    const {url, field, reload, successMessage} = pendingAssignment;
     await run(async () => {
-        await apiFetch(`/api/users/${user.id}/${action}`, {method:"PATCH", body:JSON.stringify({[field]:value})});
+        await apiFetch(url, {method:"PATCH", body:JSON.stringify({[field]:value})});
         document.getElementById("assignment-dialog").close();
         pendingAssignment = null;
-        await loadUsers();
-        showMessage("Користувача оновлено", "success");
+        await reload();
+        showMessage(successMessage, "success");
     });
 }
 async function changeStatus(user) { const value = window.prompt("Status: PENDING_EMAIL_VERIFICATION, PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED, ARCHIVED", user.status); if (value) await mutateUser(user.id, "status", {status:value.trim().toUpperCase()}); }
@@ -141,6 +173,18 @@ function populateUserSelects() {
     });
 }
 function displayName(user) { return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username; }
+function unitName(id) { return id == null ? "—" : units.find(unit => unit.id === id)?.name || "—"; }
+function managerName(id) {
+    if (id == null) return "—";
+    const manager = users.find(user => user.id === id);
+    return manager ? `${displayName(manager)} (${manager.username})` : "—";
+}
+function descendantIdsOf(unit) {
+    const descendants = new Set();
+    const start = units.findIndex(candidate => candidate.id === unit.id);
+    for (let index = start + 1; index < units.length && units[index].depth > unit.depth; index++) descendants.add(units[index].id);
+    return descendants;
+}
 function numberOrNull(value) { return value === "" || value == null ? null : Number(value); }
 async function run(action) { try { await action(); } catch (error) { showMessage(error.message, "error"); } }
 
