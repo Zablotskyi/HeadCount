@@ -4,11 +4,14 @@ const managementRoles = new Set(["COUNTRY_MANAGER", "REGIONAL_MANAGER", "SUPPORT
 let currentUser;
 let units = [];
 let activeEvent;
+let pendingEventAction = null;
 
 document.getElementById("logout").addEventListener("click", logout);
 document.getElementById("refresh").addEventListener("click", refreshEvent);
 document.getElementById("start-headcount").addEventListener("click", startHeadcount);
 document.getElementById("scope-select").addEventListener("change", refreshEvent);
+document.getElementById("event-action-back").addEventListener("click", closeEventActionDialog);
+document.getElementById("event-action-confirm").addEventListener("click", executeEventAction);
 
 async function loadTree(parent = null, depth = 0) {
     const children = parent === null
@@ -44,12 +47,84 @@ async function refreshEvent() {
     activeEvent = await apiFetch(`/api/headcount/events/active${scopeId ? `?scopeOrganizationUnitId=${encodeURIComponent(scopeId)}` : ""}`);
     const summary = document.getElementById("active-event");
     if (!activeEvent) {
-        summary.innerHTML = "<strong>Активної події для вибраної області немає</strong>";
+        summary.replaceChildren();
+        const empty = document.createElement("strong");
+        empty.textContent = "Активної події для вибраної області немає";
+        summary.append(empty);
         document.getElementById("participants").replaceChildren();
+        document.getElementById("start-headcount").hidden = !canManageHeadcount();
         return;
     }
-    summary.textContent = `${activeEvent.title} · ${activeEvent.scopeOrganizationUnitName} · ${formatTime(activeEvent.startedAt)}`;
+    renderActiveEvent();
+    document.getElementById("start-headcount").hidden = true;
     renderParticipants(await apiFetch(`/api/headcount/events/${activeEvent.id}/participants`));
+}
+
+function renderActiveEvent() {
+    const summary = document.getElementById("active-event");
+    summary.replaceChildren();
+    const details = document.createElement("div");
+    details.className = "event-details";
+    const title = document.createElement("strong");
+    title.textContent = activeEvent.title;
+    const scope = document.createElement("span");
+    scope.textContent = activeEvent.scopeOrganizationUnitName;
+    const status = document.createElement("span");
+    status.textContent = `Статус: ${activeEvent.status}`;
+    const created = document.createElement("span");
+    created.textContent = `Створено: ${formatTime(activeEvent.createdAt)}`;
+    details.append(title, scope, status, created);
+    summary.append(details);
+    if (activeEvent.status === "ACTIVE" && canManageHeadcount()) {
+        const actions = document.createElement("div");
+        actions.className = "event-actions";
+        const close = document.createElement("button");
+        close.type = "button";
+        close.textContent = "Закрити HeadCount";
+        close.addEventListener("click", () => openEventActionDialog("close"));
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "danger";
+        cancel.textContent = "Скасувати HeadCount";
+        cancel.addEventListener("click", () => openEventActionDialog("cancel"));
+        actions.append(close, cancel);
+        summary.append(actions);
+    }
+}
+
+function openEventActionDialog(action) {
+    if (!activeEvent || activeEvent.status !== "ACTIVE" || !canManageHeadcount()) return;
+    pendingEventAction = {action, eventId:activeEvent.id};
+    const isClose = action === "close";
+    document.getElementById("event-action-title").textContent = isClose ? "Закрити HeadCount" : "Скасувати HeadCount";
+    document.getElementById("event-action-message").textContent = isClose
+        ? "Закрити цей HeadCount? Після закриття підтвердження більше не прийматимуться."
+        : "Скасувати цей HeadCount? Використовуйте це, якщо подію було оголошено помилково.";
+    document.getElementById("event-action-back").textContent = isClose ? "Скасувати" : "Назад";
+    const confirmButton = document.getElementById("event-action-confirm");
+    confirmButton.textContent = isClose ? "Закрити" : "Скасувати HeadCount";
+    confirmButton.className = isClose ? "" : "danger";
+    document.getElementById("event-action-dialog").showModal();
+}
+
+function closeEventActionDialog() {
+    pendingEventAction = null;
+    document.getElementById("event-action-dialog").close();
+}
+
+async function executeEventAction() {
+    if (!pendingEventAction) return;
+    const {action, eventId} = pendingEventAction;
+    try {
+        await apiFetch(`/api/headcount/events/${eventId}/${action}`, {method:"POST"});
+        closeEventActionDialog();
+        showMessage(action === "close" ? "HeadCount закрито" : "HeadCount скасовано", "success");
+        await refreshEvent();
+    } catch (error) {
+        closeEventActionDialog();
+        await refreshEvent().catch(() => {});
+        showMessage(error.message, "error");
+    }
 }
 
 function renderParticipants(participants) {
@@ -93,14 +168,15 @@ async function startHeadcount() {
     } catch (error) { showMessage(error.message, "error"); }
 }
 
-function formatTime(value) { return value ? new Intl.DateTimeFormat("uk-UA", {dateStyle:"short", timeStyle:"medium"}).format(new Date(`${value}Z`)) : ""; }
+function canManageHeadcount() { return currentUser?.roles.some(role => managementRoles.has(role)) ?? false; }
+function formatTime(value) { return value ? new Intl.DateTimeFormat("uk-UA", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}).format(new Date(`${value}Z`)) : ""; }
 
 async function init() {
     try {
         currentUser = await apiFetch("/api/users/me");
         document.getElementById("current-user").textContent = `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.username;
         document.getElementById("admin-link").hidden = !currentUser.roles.includes("ADMIN");
-        document.getElementById("start-headcount").hidden = !currentUser.roles.some(role => managementRoles.has(role));
+        document.getElementById("start-headcount").hidden = !canManageHeadcount();
         units = await loadTree(); renderUnits(); await refreshEvent();
     } catch (error) { showMessage(error.message, "error"); }
 }
