@@ -2,6 +2,7 @@ import {apiFetch, logout, showMessage} from "/js/api.js";
 
 let units = [];
 let users = [];
+let pendingAssignment = null;
 document.getElementById("logout").addEventListener("click", logout);
 document.getElementById("all-users").addEventListener("click", loadUsers);
 document.getElementById("search-form").addEventListener("submit", async event => {
@@ -11,6 +12,10 @@ document.getElementById("search-form").addEventListener("submit", async event =>
 });
 document.getElementById("unit-form").addEventListener("submit", createUnit);
 document.getElementById("user-form").addEventListener("submit", createUser);
+document.getElementById("edit-user-form").addEventListener("submit", updateUser);
+document.getElementById("cancel-edit-user").addEventListener("click", () => document.getElementById("edit-user-dialog").close());
+document.getElementById("assignment-form").addEventListener("submit", saveAssignment);
+document.getElementById("cancel-assignment").addEventListener("click", () => document.getElementById("assignment-dialog").close());
 
 async function loadTree(parent = null, depth = 0) {
     const children = parent === null ? await apiFetch("/api/organization-units/roots") : await apiFetch(`/api/organization-units/${parent}/children`);
@@ -37,11 +42,13 @@ async function loadUnits() {
 
 async function loadUsers(query) {
     users = await apiFetch(query?.trim() ? `/api/users/search?q=${encodeURIComponent(query.trim())}` : "/api/users");
+    populateUserSelects();
     const body = document.getElementById("user-table"); body.replaceChildren();
     users.forEach(user => {
-        const row = body.insertRow(); appendCells(row, [`${user.firstName} ${user.lastName} (${user.username})`, user.organizationUnitName || "—", `${user.status} / ${user.enabled ? "active" : "disabled"}`, [...user.roles].join(", ")]);
+        const row = body.insertRow();
+        appendCells(row, [displayName(user), user.username, user.resourceNumber, user.position || "—", user.organizationUnitName || "—", user.lineManagerName || "—", user.status, user.enabled ? "Так" : "Ні", [...user.roles].join(", ")]);
         const actions = row.insertCell(); actions.className = "actions";
-        addButton(actions, "Профіль", () => editProfile(user)); addButton(actions, "Unit", () => assignUnit(user)); addButton(actions, "Line manager", () => assignLineManager(user));
+        addButton(actions, "Профіль", () => editProfile(user)); addButton(actions, "Підрозділ", () => assignUnit(user)); addButton(actions, "Лінійний менеджер", () => assignLineManager(user));
         addButton(actions, "Статус", () => changeStatus(user)); addButton(actions, user.enabled ? "Деактивувати" : "Активувати", () => mutateUser(user.id, "active", {active: !user.enabled}));
         addButton(actions, "+ роль", () => addRole(user)); addButton(actions, "− роль", () => removeRole(user));
     });
@@ -58,7 +65,12 @@ async function createUser(event) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form));
-    await run(async () => { await apiFetch("/api/users", {method:"POST", body:JSON.stringify({...data, organizationUnitId:numberOrNull(data.organizationUnitId)})}); form.reset(); await loadUsers(); showMessage("Користувача створено", "success"); });
+    await run(async () => {
+        await apiFetch("/api/users", {method:"POST", body:JSON.stringify({...data, organizationUnitId:numberOrNull(data.organizationUnitId), lineManagerId:numberOrNull(data.lineManagerId)})});
+        form.reset();
+        await loadUsers();
+        showMessage("Користувача створено", "success");
+    });
 }
 
 async function changeParent(unit) { const value = window.prompt("Новий parent ID (порожньо = root):", unit.parentId || ""); if (value === null) return; await mutateUnit(unit.id, "parent", {parentId:numberOrNull(value)}); }
@@ -66,14 +78,54 @@ async function assignManager(unit) { const value = window.prompt("Manager user I
 async function mutateUnit(id, action, body) { await run(async () => { await apiFetch(`/api/organization-units/${id}/${action}`, {method:"PATCH", body:JSON.stringify(body)}); await loadUnits(); showMessage("Unit оновлено", "success"); }); }
 
 async function editProfile(user) {
-    const firstName = window.prompt("Ім’я:", user.firstName); if (firstName === null) return;
-    const lastName = window.prompt("Прізвище:", user.lastName); if (lastName === null) return;
-    const email = window.prompt("Email:", user.email); if (email === null) return;
-    const body = {username:user.username, resourceNumber:user.resourceNumber, grade:user.grade, firstName, lastName, mobileNumber:user.mobileNumber, email, country:user.country, city:user.city, office:user.office, position:user.position, address:user.address, authorizedPersonPhoneNumber:user.authorizedPersonPhoneNumber, timeZone:user.timeZone};
-    await run(async () => { await apiFetch(`/api/users/${user.id}`, {method:"PUT", body:JSON.stringify(body)}); await loadUsers(); showMessage("Профіль оновлено", "success"); });
+    const form = document.getElementById("edit-user-form");
+    const fields = ["id", "username", "resourceNumber", "grade", "firstName", "lastName", "mobileNumber", "email", "country", "city", "office", "position", "address", "authorizedPersonPhoneNumber", "timeZone"];
+    fields.forEach(field => { form.elements[field].value = user[field] ?? ""; });
+    document.getElementById("edit-user-dialog").showModal();
 }
-async function assignUnit(user) { const value = window.prompt("Organization unit ID (порожньо = прибрати):", user.organizationUnitId || ""); if (value !== null) await mutateUser(user.id, "organization-unit", {organizationUnitId:numberOrNull(value)}); }
-async function assignLineManager(user) { const value = window.prompt("Line manager user ID (порожньо = прибрати):", user.lineManagerId || ""); if (value !== null) await mutateUser(user.id, "line-manager", {lineManagerId:numberOrNull(value)}); }
+async function updateUser(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    const id = data.id;
+    delete data.id;
+    await run(async () => {
+        await apiFetch(`/api/users/${id}`, {method:"PUT", body:JSON.stringify(data)});
+        document.getElementById("edit-user-dialog").close();
+        await loadUsers();
+        showMessage("Профіль користувача оновлено", "success");
+    });
+}
+function assignUnit(user) {
+    const options = units.map(unit => ({value:unit.id, label:`${"— ".repeat(unit.depth)}${unit.name}`}));
+    openAssignment(user, "organization-unit", "Підрозділ користувача", "Підрозділ", "organizationUnitId", user.organizationUnitId, options);
+}
+function assignLineManager(user) {
+    const options = users.filter(manager => manager.id !== user.id).map(manager => ({value:manager.id, label:`${displayName(manager)} (${manager.username})`}));
+    openAssignment(user, "line-manager", "Лінійний менеджер користувача", "Лінійний менеджер", "lineManagerId", user.lineManagerId, options);
+}
+function openAssignment(user, action, title, label, field, currentValue, options) {
+    pendingAssignment = {user, action, field};
+    document.getElementById("assignment-title").textContent = title;
+    document.getElementById("assignment-label").textContent = label;
+    const select = document.getElementById("assignment-value");
+    select.replaceChildren(new Option("Не призначено", ""), ...options.map(option => new Option(option.label, option.value)));
+    select.value = currentValue ?? "";
+    document.getElementById("assignment-dialog").showModal();
+}
+async function saveAssignment(event) {
+    event.preventDefault();
+    if (!pendingAssignment) return;
+    const value = numberOrNull(new FormData(event.currentTarget).get("value"));
+    const {user, action, field} = pendingAssignment;
+    await run(async () => {
+        await apiFetch(`/api/users/${user.id}/${action}`, {method:"PATCH", body:JSON.stringify({[field]:value})});
+        document.getElementById("assignment-dialog").close();
+        pendingAssignment = null;
+        await loadUsers();
+        showMessage("Користувача оновлено", "success");
+    });
+}
 async function changeStatus(user) { const value = window.prompt("Status: PENDING_EMAIL_VERIFICATION, PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED, ARCHIVED", user.status); if (value) await mutateUser(user.id, "status", {status:value.trim().toUpperCase()}); }
 async function mutateUser(id, action, body) { await run(async () => { await apiFetch(`/api/users/${id}/${action}`, {method:"PATCH", body:JSON.stringify(body)}); await loadUsers(); showMessage("Користувача оновлено", "success"); }); }
 async function addRole(user) { const role = window.prompt("Role:"); if (role) await run(async () => { await apiFetch(`/api/users/${user.id}/roles`, {method:"POST", body:JSON.stringify({role:role.trim().toUpperCase()})}); await loadUsers(); }); }
@@ -81,6 +133,14 @@ async function removeRole(user) { const role = window.prompt(`Role для вид
 
 function appendCells(row, values) { values.forEach(value => { const cell = row.insertCell(); cell.textContent = value ?? ""; }); }
 function addButton(container, label, action) { const button = document.createElement("button"); button.type="button"; button.textContent=label; button.addEventListener("click", action); container.append(button); }
+function populateUserSelects() {
+    document.querySelectorAll(".user-select").forEach(select => {
+        const first = select.options[0];
+        select.replaceChildren(first);
+        users.forEach(user => select.add(new Option(`${displayName(user)} (${user.username})`, user.id)));
+    });
+}
+function displayName(user) { return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username; }
 function numberOrNull(value) { return value === "" || value == null ? null : Number(value); }
 async function run(action) { try { await action(); } catch (error) { showMessage(error.message, "error"); } }
 
