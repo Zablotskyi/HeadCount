@@ -154,6 +154,7 @@ class HeadcountServiceTest {
         service.confirmNeedHelp(1L, 20L, 10L, "SELF", "Medical help");
 
         assertSame(HeadcountParticipantStatus.NEED_HELP, participant.getStatus());
+        assertSame(starter, participant.getConfirmedBy());
         assertEquals("Medical help", participant.getHelpMessage());
         assertNotNull(participant.getHelpRequestedAt());
     }

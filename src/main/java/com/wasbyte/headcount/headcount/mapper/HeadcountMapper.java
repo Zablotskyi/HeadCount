@@ -22,12 +22,15 @@ public class HeadcountMapper {
     }
 
     public HeadcountParticipantResponse toResponse(HeadcountParticipant participant) {
+        User confirmedBy = participant.getConfirmedBy();
         return new HeadcountParticipantResponse(
                 participant.getId(), participant.getEvent().getId(), participant.getEmployee().getId(),
                 participant.getEmployeeNameSnapshot(), participant.getResourceNumberSnapshot(),
                 participant.getOrganizationPathSnapshot(), participant.getStatus(),
                 participant.getConfirmedAt(),
-                participant.getConfirmedBy() == null ? null : participant.getConfirmedBy().getId(),
+                confirmedBy == null ? null : confirmedBy.getId(),
+                confirmedBy == null ? null : confirmedBy.getFirstName(),
+                confirmedBy == null ? null : confirmedBy.getLastName(),
                 participant.getConfirmationSource(), participant.getHelpMessage(),
                 participant.getHelpRequestedAt(), participant.getVersion());
     }

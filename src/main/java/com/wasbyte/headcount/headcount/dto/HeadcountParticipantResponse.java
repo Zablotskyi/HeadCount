@@ -8,6 +8,7 @@ public record HeadcountParticipantResponse(
         Long id, Long eventId, Long employeeId,
         String employeeNameSnapshot, String resourceNumberSnapshot,
         String organizationPathSnapshot, HeadcountParticipantStatus status,
-        LocalDateTime confirmedAt, Long confirmedById, String confirmationSource,
+        LocalDateTime confirmedAt, Long confirmedById,
+        String confirmedByFirstName, String confirmedByLastName, String confirmationSource,
         String helpMessage, LocalDateTime helpRequestedAt, long version) {
 }

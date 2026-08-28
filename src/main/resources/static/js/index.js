@@ -142,10 +142,16 @@ function renderParticipants(participants) {
                 openParticipantDetails(participant);
             }
         });
-        card.innerHTML = `<strong></strong><div class="muted"></div><div class="status"></div><div class="help"></div>`;
+        card.innerHTML = `<strong></strong><div class="muted"></div><div class="status"></div><div class="confirmer muted"></div><div class="help"></div>`;
         card.querySelector("strong").textContent = participant.employeeNameSnapshot;
         card.querySelector(".muted").textContent = `${participant.resourceNumberSnapshot} · ${participant.organizationPathSnapshot}`;
         card.querySelector(".status").textContent = `${participant.status}${participant.confirmedAt ? ` · ${formatTime(participant.confirmedAt)}` : ""}`;
+        if (participant.status !== "PENDING" && participant.confirmedById != null
+                && participant.confirmedById !== participant.employeeId) {
+            const confirmerName = [participant.confirmedByFirstName, participant.confirmedByLastName]
+                .map(value => value?.trim()).filter(Boolean).join(" ") || "—";
+            card.querySelector(".confirmer").textContent = `Підтвердив: ${confirmerName}`;
+        }
         if (participant.status === "NEED_HELP") card.querySelector(".help").textContent = participant.helpMessage || "Потрібна допомога";
         if (activeEvent?.status === "ACTIVE") {
             const actions = document.createElement("div"); actions.className = "participant-actions";
