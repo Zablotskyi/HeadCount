@@ -22,7 +22,7 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
-                                "/login", "/login.html", "/api/csrf", "/error", "/favicon.ico",
+                                "/login", "/login.html", "/api/csrf", "/error", "/favicon.ico", "/favicon.png",
                                 "/css/**", "/js/**", "/images/**",
                                 "/actuator/health"
                         ).permitAll()
