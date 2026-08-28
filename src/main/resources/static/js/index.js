@@ -153,7 +153,7 @@ function renderParticipants(participants) {
             card.querySelector(".confirmer").textContent = `Підтвердив: ${confirmerName}`;
         }
         if (participant.status === "NEED_HELP") card.querySelector(".help").textContent = participant.helpMessage || "Потрібна допомога";
-        if (activeEvent?.status === "ACTIVE") {
+        if (activeEvent?.status === "ACTIVE" && canConfirmParticipant(participant)) {
             const actions = document.createElement("div"); actions.className = "participant-actions";
             const safe = document.createElement("button"); safe.textContent = "Я в безпеці"; safe.onclick = event => { event.stopPropagation(); confirm(participant, "safe"); };
             const help = document.createElement("button"); help.textContent = "Потрібна допомога"; help.onclick = event => { event.stopPropagation(); confirm(participant, "need-help"); };
@@ -228,6 +228,9 @@ async function startHeadcount() {
 }
 
 function canManageHeadcount() { return currentUser?.roles.some(role => headcountLifecycleRoles.has(role)) ?? false; }
+function canConfirmParticipant(participant) {
+    return participant.employeeId === currentUser?.id || canManageHeadcount();
+}
 function formatTime(value) { return value ? new Intl.DateTimeFormat("uk-UA", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}).format(new Date(`${value}Z`)) : ""; }
 
 async function init() {

@@ -14,6 +14,7 @@ import com.wasbyte.headcount.organization.repository.OrganizationUnitRepository;
 import com.wasbyte.headcount.user.entity.User;
 import com.wasbyte.headcount.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,8 @@ import java.util.Optional;
 @Service
 @Transactional(readOnly = true)
 public class HeadcountService {
+
+    private static final Set<String> GLOBAL_CONFIRMATION_ROLES = Set.of("ADMIN", "HEADCOUNT_MANAGER");
 
     private final HeadcountEventRepository eventRepository;
     private final HeadcountParticipantRepository participantRepository;
@@ -106,9 +109,10 @@ public class HeadcountService {
                                             Long confirmedById, String confirmationSource) {
         HeadcountParticipant participant = findParticipant(eventId, employeeId);
         ensureEventActive(participant.getEvent());
+        User confirmedBy = authorizeParticipantConfirmation(participant, confirmedById);
         participant.setStatus(HeadcountParticipantStatus.SAFE);
         participant.setConfirmedAt(LocalDateTime.now());
-        participant.setConfirmedBy(findUser(confirmedById));
+        participant.setConfirmedBy(confirmedBy);
         participant.setConfirmationSource(confirmationSource);
         participant.setUpdatedAt(LocalDateTime.now());
         return participant;
@@ -123,10 +127,11 @@ public class HeadcountService {
         }
         HeadcountParticipant participant = findParticipant(eventId, employeeId);
         ensureEventActive(participant.getEvent());
+        User confirmedBy = authorizeParticipantConfirmation(participant, confirmedById);
         LocalDateTime now = LocalDateTime.now();
         participant.setStatus(HeadcountParticipantStatus.NEED_HELP);
         participant.setConfirmedAt(now);
-        participant.setConfirmedBy(findUser(confirmedById));
+        participant.setConfirmedBy(confirmedBy);
         participant.setConfirmationSource(confirmationSource);
         participant.setHelpMessage(helpMessage);
         participant.setHelpRequestedAt(now);
@@ -212,6 +217,33 @@ public class HeadcountService {
         return participantRepository.findByEventIdAndEmployeeId(eventId, employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "HeadCount participant not found for event " + eventId + " and employee " + employeeId));
+    }
+
+    private User authorizeParticipantConfirmation(HeadcountParticipant participant, Long actorUserId) {
+        User employee = participant.getEmployee();
+        if (employee.getId().equals(actorUserId)) {
+            return findUser(actorUserId);
+        }
+
+        User actor = findUser(actorUserId);
+        boolean hasGlobalPermission = actor.getRoles().stream()
+                .anyMatch(role -> GLOBAL_CONFIRMATION_ROLES.contains(role.getName()));
+        if (hasGlobalPermission || managesOrganizationBranch(actorUserId, employee.getOrganizationUnit())) {
+            return actor;
+        }
+
+        throw new AccessDeniedException("User cannot confirm this HeadCount participant");
+    }
+
+    private boolean managesOrganizationBranch(Long actorUserId, OrganizationUnit employeeUnit) {
+        if (employeeUnit == null) {
+            return false;
+        }
+        Set<Long> managedScopeIds = new HashSet<>();
+        for (OrganizationUnit managedUnit : organizationUnitRepository.findByManagerId(actorUserId)) {
+            managedScopeIds.addAll(collectScopeIds(managedUnit));
+        }
+        return managedScopeIds.contains(employeeUnit.getId());
     }
 
     private OrganizationUnit findOrganizationUnit(Long id) {

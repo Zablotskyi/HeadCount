@@ -11,6 +11,7 @@ import com.wasbyte.headcount.headcount.repository.HeadcountEventRepository;
 import com.wasbyte.headcount.headcount.repository.HeadcountParticipantRepository;
 import com.wasbyte.headcount.organization.entity.OrganizationUnit;
 import com.wasbyte.headcount.organization.repository.OrganizationUnitRepository;
+import com.wasbyte.headcount.user.entity.Role;
 import com.wasbyte.headcount.user.entity.User;
 import com.wasbyte.headcount.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +56,8 @@ class HeadcountServiceTest {
     void setUp() {
         root = unit(1L, "Organization", null);
         starter = user(10L, "Starter", "User", "S-1", root);
+        Role adminRole = role("ADMIN");
+        when(starter.getRoles()).thenReturn(Set.of(adminRole));
     }
 
     @Test
@@ -160,6 +164,113 @@ class HeadcountServiceTest {
     }
 
     @Test
+    void employeeCanConfirmSelfSafe() {
+        User employee = user(20L, "Self", "Employee", "R-20", root);
+        HeadcountParticipant participant = participant(HeadcountEventStatus.ACTIVE, employee);
+        arrangeConfirmation(participant, employee, 20L);
+
+        service.confirmSafe(1L, 20L, 20L, "SELF");
+
+        assertSame(HeadcountParticipantStatus.SAFE, participant.getStatus());
+        assertSame(employee, participant.getConfirmedBy());
+    }
+
+    @Test
+    void employeeCanConfirmSelfNeedHelp() {
+        User employee = user(20L, "Self", "Employee", "R-20", root);
+        HeadcountParticipant participant = participant(HeadcountEventStatus.ACTIVE, employee);
+        arrangeConfirmation(participant, employee, 20L);
+
+        service.confirmNeedHelp(1L, 20L, 20L, "SELF", "Help");
+
+        assertSame(HeadcountParticipantStatus.NEED_HELP, participant.getStatus());
+        assertSame(employee, participant.getConfirmedBy());
+    }
+
+    @Test
+    void employeeCannotConfirmOther() {
+        User employee = user(20L, "Other", "Employee", "R-20", root);
+        User actor = user(30L, "Ordinary", "Employee", "R-30", root);
+        arrangeConfirmation(participant(HeadcountEventStatus.ACTIVE, employee), actor, 30L);
+        when(unitRepository.findByManagerId(30L)).thenReturn(List.of());
+
+        assertThrows(AccessDeniedException.class,
+                () -> service.confirmSafe(1L, 20L, 30L, "WEB"));
+    }
+
+    @Test
+    void unitManagerCanConfirmEmployeeInOwnUnit() {
+        OrganizationUnit ict = unit(4L, "ICT", root);
+        User employee = user(20L, "ICT", "Employee", "R-20", ict);
+        User manager = user(30L, "ICT", "Manager", "R-30", root);
+        HeadcountParticipant participant = participant(HeadcountEventStatus.ACTIVE, employee);
+        arrangeManagerBranch(participant, manager, ict, List.of());
+
+        service.confirmSafe(1L, 20L, 30L, "WEB");
+
+        assertSame(manager, participant.getConfirmedBy());
+    }
+
+    @Test
+    void unitManagerCanConfirmEmployeeInDescendantUnit() {
+        OrganizationUnit ict = unit(4L, "ICT", root);
+        OrganizationUnit ictUnit = unit(5L, "ICT Unit", ict);
+        User employee = user(20L, "Child", "Employee", "R-20", ictUnit);
+        User manager = user(30L, "ICT", "Manager", "R-30", root);
+        HeadcountParticipant participant = participant(HeadcountEventStatus.ACTIVE, employee);
+        arrangeManagerBranch(participant, manager, ict, List.of(ictUnit));
+        when(unitRepository.findByParentId(5L)).thenReturn(List.of());
+
+        service.confirmNeedHelp(1L, 20L, 30L, "WEB", "Help");
+
+        assertSame(manager, participant.getConfirmedBy());
+    }
+
+    @Test
+    void unitManagerCannotConfirmEmployeeInSiblingUnit() {
+        OrganizationUnit office = unit(3L, "Office A", root);
+        OrganizationUnit ict = unit(4L, "ICT", office);
+        OrganizationUnit hr = unit(6L, "HR", office);
+        User employee = user(20L, "HR", "Employee", "R-20", hr);
+        User manager = user(30L, "ICT", "Manager", "R-30", ict);
+        arrangeManagerBranch(participant(HeadcountEventStatus.ACTIVE, employee), manager, ict, List.of());
+
+        assertThrows(AccessDeniedException.class,
+                () -> service.confirmSafe(1L, 20L, 30L, "WEB"));
+    }
+
+    @Test
+    void unitManagerCannotConfirmEmployeeInUnrelatedBranch() {
+        OrganizationUnit ict = unit(4L, "ICT", root);
+        OrganizationUnit officeB = unit(7L, "Office B", root);
+        User employee = user(20L, "Other", "Employee", "R-20", officeB);
+        User manager = user(30L, "ICT", "Manager", "R-30", ict);
+        arrangeManagerBranch(participant(HeadcountEventStatus.ACTIVE, employee), manager, ict, List.of());
+
+        assertThrows(AccessDeniedException.class,
+                () -> service.confirmSafe(1L, 20L, 30L, "WEB"));
+    }
+
+    @Test
+    void headcountManagerCanConfirmOtherParticipant() {
+        assertGlobalRoleCanConfirmOther("HEADCOUNT_MANAGER");
+    }
+
+    @Test
+    void adminCanConfirmOtherParticipant() {
+        assertGlobalRoleCanConfirmOther("ADMIN");
+    }
+
+    @Test
+    void employeeNotInEventCannotBeConfirmed() {
+        when(participantRepository.findByEventIdAndEmployeeId(1L, 99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.confirmSafe(1L, 99L, 10L, "WEB"));
+        verify(userRepository, never()).findById(10L);
+    }
+
+    @Test
     void closeEventChangesStatus() {
         HeadcountEvent event = event(HeadcountEventStatus.ACTIVE);
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
@@ -237,9 +348,39 @@ class HeadcountServiceTest {
         when(userRepository.findById(10L)).thenReturn(Optional.of(starter));
     }
 
+    private void arrangeConfirmation(HeadcountParticipant participant, User actor, Long actorId) {
+        when(participantRepository.findByEventIdAndEmployeeId(1L, 20L)).thenReturn(Optional.of(participant));
+        when(userRepository.findById(actorId)).thenReturn(Optional.of(actor));
+    }
+
+    private void arrangeManagerBranch(HeadcountParticipant participant, User manager,
+                                      OrganizationUnit managedUnit, List<OrganizationUnit> children) {
+        arrangeConfirmation(participant, manager, manager.getId());
+        when(unitRepository.findByManagerId(manager.getId())).thenReturn(List.of(managedUnit));
+        when(unitRepository.findByParentId(managedUnit.getId())).thenReturn(children);
+    }
+
+    private void assertGlobalRoleCanConfirmOther(String roleName) {
+        User employee = user(20L, "Other", "Employee", "R-20", root);
+        User actor = user(30L, "Authorized", "User", "R-30", root);
+        Role role = role(roleName);
+        when(actor.getRoles()).thenReturn(Set.of(role));
+        HeadcountParticipant participant = participant(HeadcountEventStatus.ACTIVE, employee);
+        arrangeConfirmation(participant, actor, 30L);
+
+        service.confirmSafe(1L, 20L, 30L, "WEB");
+
+        assertSame(actor, participant.getConfirmedBy());
+    }
+
     private HeadcountParticipant participant(HeadcountEventStatus eventStatus) {
+        return participant(eventStatus, user(20L, "Participant", "User", "R-20", root));
+    }
+
+    private HeadcountParticipant participant(HeadcountEventStatus eventStatus, User employee) {
         HeadcountParticipant participant = new HeadcountParticipant();
         participant.setEvent(event(eventStatus));
+        participant.setEmployee(employee);
         return participant;
     }
 
@@ -265,6 +406,13 @@ class HeadcountServiceTest {
         when(user.getLastName()).thenReturn(lastName);
         when(user.getResourceNumber()).thenReturn(resourceNumber);
         when(user.getOrganizationUnit()).thenReturn(unit);
+        when(user.getRoles()).thenReturn(Set.of());
         return user;
+    }
+
+    private Role role(String name) {
+        Role role = org.mockito.Mockito.mock(Role.class);
+        when(role.getName()).thenReturn(name);
+        return role;
     }
 }

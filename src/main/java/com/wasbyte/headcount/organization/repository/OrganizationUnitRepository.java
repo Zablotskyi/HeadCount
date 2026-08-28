@@ -9,5 +9,7 @@ public interface OrganizationUnitRepository extends JpaRepository<OrganizationUn
 
     List<OrganizationUnit> findByParentId(Long parentId);
 
+    List<OrganizationUnit> findByManagerId(Long managerId);
+
     List<OrganizationUnit> findByParentIsNullOrderBySortOrderAscNameAsc();
 }

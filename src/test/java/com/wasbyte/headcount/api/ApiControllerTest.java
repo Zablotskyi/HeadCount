@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.WebApplicationContext;
@@ -454,6 +455,19 @@ class ApiControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("SAFE"));
             verify(headcountService).confirmSafe(3L, 9L, 77L, "SELF");
+        }
+
+        @Test
+        void deniedParticipantConfirmationReturns403() throws Exception {
+            when(headcountService.confirmSafe(3L, 9L, 77L, "SELF"))
+                    .thenThrow(new AccessDeniedException("Not allowed"));
+
+            mockMvc.perform(post("/api/headcount/events/3/participants/9/safe")
+                            .with(user(principal(77L, "EMPLOYEE"))).with(csrf())
+                            .contentType("application/json")
+                            .content("{\"confirmationSource\":\"SELF\"}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").value("Access denied"));
         }
 
         @Test
