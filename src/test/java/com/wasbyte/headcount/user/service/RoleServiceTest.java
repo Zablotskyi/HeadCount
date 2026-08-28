@@ -15,7 +15,12 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.wasbyte.headcount.exception.InvalidOperationException;
 
 @ExtendWith(MockitoExtension.class)
 class RoleServiceTest {
@@ -57,21 +62,65 @@ class RoleServiceTest {
     }
 
     @Test
-    void removeRoleRemovesRole() {
+    void removingNonAdminRoleStillWorks() {
         User user = userWithRoles();
         Role role = org.mockito.Mockito.mock(Role.class);
         when(role.getId()).thenReturn(5L);
         user.getRoles().add(role);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(role));
+        when(roleRepository.findByName("EMPLOYEE")).thenReturn(Optional.of(role));
 
-        service.removeRole(1L, "ADMIN");
+        service.removeRole(1L, "EMPLOYEE", 2L);
         assertEquals(0, user.getRoles().size());
+        verify(userRepository, never()).countDistinctByRolesName("ADMIN");
     }
 
-    private User userWithRoles() {
+    @Test
+    void adminCannotRemoveOwnAdminRole() {
+        InvalidOperationException error = assertThrows(InvalidOperationException.class,
+                () -> service.removeRole(1L, "ADMIN", 1L));
+
+        assertEquals("Не можна видалити роль ADMIN у власного облікового запису", error.getMessage());
+        verify(roleRepository, never()).findByNameForUpdate("ADMIN");
+    }
+
+    @Test
+    void cannotRemoveAdminRoleFromLastAdmin() {
+        Role admin = role(5L);
+        User target = userWithRoles(admin);
+        when(roleRepository.findByNameForUpdate("ADMIN")).thenReturn(Optional.of(admin));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(target));
+        when(userRepository.countDistinctByRolesName("ADMIN")).thenReturn(1L);
+
+        InvalidOperationException error = assertThrows(InvalidOperationException.class,
+                () -> service.removeRole(2L, "ADMIN", 1L));
+
+        assertEquals("Не можна видалити роль ADMIN в останнього адміністратора", error.getMessage());
+        assertEquals(1, target.getRoles().size());
+    }
+
+    @Test
+    void adminCanRemoveAdminRoleFromAnotherAdminWhenMultipleAdminsExist() {
+        Role admin = role(5L);
+        User target = userWithRoles(admin);
+        when(roleRepository.findByNameForUpdate("ADMIN")).thenReturn(Optional.of(admin));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(target));
+        when(userRepository.countDistinctByRolesName("ADMIN")).thenReturn(2L);
+
+        service.removeRole(2L, "ADMIN", 1L);
+
+        assertEquals(0, target.getRoles().size());
+    }
+
+    private User userWithRoles(Role... roles) {
         User user = new User();
-        user.setRoles(new HashSet<>());
+        user.setRoles(new HashSet<>(java.util.List.of(roles)));
         return user;
+    }
+
+    private Role role(Long id) {
+        Role role = org.mockito.Mockito.mock(Role.class);
+        when(role.getId()).thenReturn(id);
+        return role;
     }
 }

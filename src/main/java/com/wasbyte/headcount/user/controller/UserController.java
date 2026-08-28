@@ -152,7 +152,8 @@ public class UserController {
 
     @DeleteMapping("/{id}/roles/{roleName}")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse removeRole(@PathVariable Long id, @PathVariable String roleName) {
-        return mapper.toResponse(roleService.removeRole(id, roleName));
+    public UserResponse removeRole(@PathVariable Long id, @PathVariable String roleName,
+                                   @AuthenticationPrincipal UserPrincipal principal) {
+        return mapper.toResponse(roleService.removeRole(id, roleName, principal.getUserId()));
     }
 }

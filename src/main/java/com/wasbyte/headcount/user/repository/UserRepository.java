@@ -29,6 +29,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByResourceNumber(String resourceNumber);
 
+    long countDistinctByRolesName(String roleName);
+
     List<User> findByOrganizationUnitIdInAndEnabledTrue(Set<Long> organizationUnitIds);
 
     @Override

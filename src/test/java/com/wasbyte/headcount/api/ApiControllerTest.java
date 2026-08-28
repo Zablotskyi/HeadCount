@@ -273,6 +273,42 @@ class ApiControllerTest {
                             .contentType("application/json").content("{\"role\":\"ADMIN\"}"))
                     .andExpect(status().isForbidden());
         }
+
+        @Test
+        void removeRoleUsesAuthenticatedPrincipalId() throws Exception {
+            User result = userEntity("target");
+            when(roleService.removeRole(2L, "ADMIN", 1L)).thenReturn(result);
+
+            mockMvc.perform(delete("/api/users/2/roles/ADMIN")
+                            .with(user(principal(1L, "ADMIN"))).with(csrf()))
+                    .andExpect(status().isOk());
+
+            verify(roleService).removeRole(2L, "ADMIN", 1L);
+        }
+
+        @Test
+        void selfAdminRemovalBusinessErrorReturns400() throws Exception {
+            when(roleService.removeRole(1L, "ADMIN", 1L)).thenThrow(new InvalidOperationException(
+                    "Не можна видалити роль ADMIN у власного облікового запису"));
+
+            mockMvc.perform(delete("/api/users/1/roles/ADMIN")
+                            .with(user(principal(1L, "ADMIN"))).with(csrf()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(
+                            "Не можна видалити роль ADMIN у власного облікового запису"));
+        }
+
+        @Test
+        void lastAdminRemovalBusinessErrorReturns400() throws Exception {
+            when(roleService.removeRole(2L, "ADMIN", 1L)).thenThrow(new InvalidOperationException(
+                    "Не можна видалити роль ADMIN в останнього адміністратора"));
+
+            mockMvc.perform(delete("/api/users/2/roles/ADMIN")
+                            .with(user(principal(1L, "ADMIN"))).with(csrf()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(
+                            "Не можна видалити роль ADMIN в останнього адміністратора"));
+        }
     }
 
     @Nested

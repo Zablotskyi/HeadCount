@@ -3,6 +3,7 @@ import {apiFetch, logout, showMessage} from "/js/api.js";
 let units = [];
 let users = [];
 let availableRoles = [];
+let currentUser = null;
 let pendingAssignment = null;
 let pendingRoleAction = null;
 document.getElementById("logout").addEventListener("click", logout);
@@ -67,6 +68,7 @@ async function loadUsers(query) {
 }
 
 async function loadRoles() { availableRoles = await apiFetch("/api/roles"); }
+async function loadCurrentUser() { currentUser = await apiFetch("/api/users/me"); }
 
 async function createUnit(event) {
     event.preventDefault();
@@ -185,7 +187,9 @@ function renderRoleOptions() {
     if (!pendingRoleAction) return;
     const {user, mode} = pendingRoleAction;
     const assigned = new Set(user.roles);
-    const choices = mode === "ADD" ? availableRoles.filter(role => !assigned.has(role)) : [...assigned].sort();
+    const choices = mode === "ADD"
+        ? availableRoles.filter(role => !assigned.has(role))
+        : [...assigned].filter(role => role !== "ADMIN" || user.id !== currentUser?.id).sort();
     const query = document.getElementById("role-search").value.trim().toLocaleLowerCase();
     const filtered = choices.filter(role => role.toLocaleLowerCase().includes(query));
     const list = document.getElementById("role-list");
@@ -255,4 +259,4 @@ function descendantIdsOf(unit) {
 function numberOrNull(value) { return value === "" || value == null ? null : Number(value); }
 async function run(action) { try { await action(); } catch (error) { showMessage(error.message, "error"); } }
 
-run(async () => { await loadRoles(); await loadUnits(); await loadUsers(); });
+run(async () => { await loadCurrentUser(); await loadRoles(); await loadUnits(); await loadUsers(); });
