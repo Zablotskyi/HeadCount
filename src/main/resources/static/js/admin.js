@@ -160,7 +160,7 @@ async function saveAssignment(event) {
 }
 async function changeStatus(user) { const value = window.prompt("Status: PENDING_EMAIL_VERIFICATION, PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED, ARCHIVED", user.status); if (value) await mutateUser(user.id, "status", {status:value.trim().toUpperCase()}); }
 async function mutateUser(id, action, body) { await run(async () => { await apiFetch(`/api/users/${id}/${action}`, {method:"PATCH", body:JSON.stringify(body)}); await loadUsers(); showMessage("Користувача оновлено", "success"); }); }
-async function addRole(user) { const role = window.prompt("Role:"); if (role) await run(async () => { await apiFetch(`/api/users/${user.id}/roles`, {method:"POST", body:JSON.stringify({role:role.trim().toUpperCase()})}); await loadUsers(); }); }
+async function addRole(user) { const role = window.prompt("Роль (наприклад HEADCOUNT_MANAGER):"); if (role) await run(async () => { await apiFetch(`/api/users/${user.id}/roles`, {method:"POST", body:JSON.stringify({role:role.trim().toUpperCase()})}); await loadUsers(); }); }
 async function removeRole(user) { const role = window.prompt(`Role для видалення (${[...user.roles].join(", ")}):`); if (role) await run(async () => { await apiFetch(`/api/users/${user.id}/roles/${encodeURIComponent(role.trim().toUpperCase())}`, {method:"DELETE"}); await loadUsers(); }); }
 
 function appendCells(row, values) { values.forEach(value => { const cell = row.insertCell(); cell.textContent = value ?? ""; }); }

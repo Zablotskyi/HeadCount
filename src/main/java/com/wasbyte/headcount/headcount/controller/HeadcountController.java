@@ -28,9 +28,7 @@ import java.util.List;
 @RequestMapping("/api/headcount/events")
 public class HeadcountController {
 
-    private static final String MANAGEMENT_ROLES = "hasAnyRole('COUNTRY_MANAGER', 'REGIONAL_MANAGER', "
-            + "'SUPPORT_MANAGER', 'PROGRAM_MANAGER', 'DEPARTMENT_MANAGER', 'UNIT_MANAGER', "
-            + "'SECURITY_OFFICER', 'SECURITY_MANAGER', 'ADMIN')";
+    private static final String LIFECYCLE_ROLES = "hasAnyRole('ADMIN', 'HEADCOUNT_MANAGER')";
 
     private final HeadcountService service;
     private final HeadcountMapper mapper;
@@ -42,7 +40,7 @@ public class HeadcountController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(MANAGEMENT_ROLES)
+    @PreAuthorize(LIFECYCLE_ROLES)
     public HeadcountEventResponse create(@Valid @RequestBody CreateHeadcountEventRequest request,
                                          @AuthenticationPrincipal UserPrincipal principal) {
         return mapper.toResponse(service.createEvent(
@@ -88,14 +86,14 @@ public class HeadcountController {
     }
 
     @PostMapping("/{eventId}/close")
-    @PreAuthorize(MANAGEMENT_ROLES)
+    @PreAuthorize(LIFECYCLE_ROLES)
     public HeadcountEventResponse close(@PathVariable Long eventId,
                                         @AuthenticationPrincipal UserPrincipal principal) {
         return mapper.toResponse(service.closeEvent(eventId, principal.getUserId()));
     }
 
     @PostMapping("/{eventId}/cancel")
-    @PreAuthorize(MANAGEMENT_ROLES)
+    @PreAuthorize(LIFECYCLE_ROLES)
     public HeadcountEventResponse cancel(@PathVariable Long eventId,
                                          @AuthenticationPrincipal UserPrincipal principal) {
         return mapper.toResponse(service.cancelEvent(eventId, principal.getUserId()));

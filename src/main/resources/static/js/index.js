@@ -1,6 +1,6 @@
 import {apiFetch, logout, showMessage} from "/js/api.js";
 
-const managementRoles = new Set(["COUNTRY_MANAGER", "REGIONAL_MANAGER", "SUPPORT_MANAGER", "PROGRAM_MANAGER", "DEPARTMENT_MANAGER", "UNIT_MANAGER", "SECURITY_OFFICER", "SECURITY_MANAGER", "ADMIN"]);
+const headcountLifecycleRoles = new Set(["ADMIN", "HEADCOUNT_MANAGER"]);
 let currentUser;
 let units = [];
 let activeEvent;
@@ -168,7 +168,7 @@ async function startHeadcount() {
     } catch (error) { showMessage(error.message, "error"); }
 }
 
-function canManageHeadcount() { return currentUser?.roles.some(role => managementRoles.has(role)) ?? false; }
+function canManageHeadcount() { return currentUser?.roles.some(role => headcountLifecycleRoles.has(role)) ?? false; }
 function formatTime(value) { return value ? new Intl.DateTimeFormat("uk-UA", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}).format(new Date(`${value}Z`)) : ""; }
 
 async function init() {

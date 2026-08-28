@@ -292,12 +292,12 @@ class ApiControllerTest {
         }
 
         @Test
-        void createEventReturns201AndUsesPrincipalId() throws Exception {
+        void headcountManagerCanCreateEventAndPrincipalIdIsUsed() throws Exception {
             HeadcountEvent event = event();
             when(headcountService.createEvent("Alarm", "Test", 10L, 77L)).thenReturn(event);
 
             mockMvc.perform(post("/api/headcount/events")
-                            .with(user(principal(77L, "SECURITY_OFFICER"))).with(csrf())
+                            .with(user(principal(77L, "HEADCOUNT_MANAGER"))).with(csrf())
                             .contentType("application/json")
                             .content("""
                                     {"title":"Alarm","description":"Test","scopeOrganizationUnitId":10}
@@ -369,11 +369,79 @@ class ApiControllerTest {
         }
 
         @Test
+        void adminCanCreateEvent() throws Exception {
+            when(headcountService.createEvent("Alarm", null, 10L, 1L)).thenReturn(event());
+
+            mockMvc.perform(post("/api/headcount/events")
+                            .with(user(principal(1L, "ADMIN"))).with(csrf())
+                            .contentType("application/json")
+                            .content("{\"title\":\"Alarm\",\"scopeOrganizationUnitId\":10}"))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        void departmentManagerCannotCreateEventWithoutHeadcountManagerRole() throws Exception {
+            mockMvc.perform(post("/api/headcount/events")
+                            .with(user(principal(7L, "DEPARTMENT_MANAGER"))).with(csrf())
+                            .contentType("application/json")
+                            .content("{\"title\":\"Alarm\",\"scopeOrganizationUnitId\":10}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
         void employeeCannotCreateEvent() throws Exception {
             mockMvc.perform(post("/api/headcount/events")
                             .with(user(principal(7L, "EMPLOYEE"))).with(csrf())
                             .contentType("application/json")
                             .content("{\"title\":\"Alarm\",\"scopeOrganizationUnitId\":10}"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void headcountManagerCanCloseAndCancel() throws Exception {
+            when(headcountService.closeEvent(3L, 77L)).thenReturn(event());
+            when(headcountService.cancelEvent(4L, 77L)).thenReturn(event());
+
+            mockMvc.perform(post("/api/headcount/events/3/close")
+                            .with(user(principal(77L, "EMPLOYEE", "HEADCOUNT_MANAGER"))).with(csrf()))
+                    .andExpect(status().isOk());
+            mockMvc.perform(post("/api/headcount/events/4/cancel")
+                            .with(user(principal(77L, "HEADCOUNT_MANAGER"))).with(csrf()))
+                    .andExpect(status().isOk());
+            verify(headcountService).closeEvent(3L, 77L);
+            verify(headcountService).cancelEvent(4L, 77L);
+        }
+
+        @Test
+        void adminCanCloseAndCancel() throws Exception {
+            when(headcountService.closeEvent(3L, 1L)).thenReturn(event());
+            when(headcountService.cancelEvent(4L, 1L)).thenReturn(event());
+
+            mockMvc.perform(post("/api/headcount/events/3/close")
+                            .with(user(principal(1L, "ADMIN"))).with(csrf()))
+                    .andExpect(status().isOk());
+            mockMvc.perform(post("/api/headcount/events/4/cancel")
+                            .with(user(principal(1L, "ADMIN"))).with(csrf()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        void previousManagementRolesCannotCloseOrCancel() throws Exception {
+            mockMvc.perform(post("/api/headcount/events/3/close")
+                            .with(user(principal(7L, "DEPARTMENT_MANAGER"))).with(csrf()))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/headcount/events/3/cancel")
+                            .with(user(principal(8L, "SECURITY_MANAGER"))).with(csrf()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void employeeCannotCloseOrCancel() throws Exception {
+            mockMvc.perform(post("/api/headcount/events/3/close")
+                            .with(user(principal(7L, "EMPLOYEE"))).with(csrf()))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/headcount/events/3/cancel")
+                            .with(user(principal(7L, "EMPLOYEE"))).with(csrf()))
                     .andExpect(status().isForbidden());
         }
     }
