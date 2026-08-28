@@ -22,7 +22,7 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
-                                "/login", "/error", "/favicon.ico",
+                                "/login", "/login.html", "/api/csrf", "/error", "/favicon.ico",
                                 "/css/**", "/js/**", "/images/**",
                                 "/actuator/health"
                         ).permitAll()
@@ -38,6 +38,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
+                        .failureUrl("/login?error")
                         .defaultSuccessUrl("/index.html", true)
                         .permitAll())
                 .logout(logout -> logout

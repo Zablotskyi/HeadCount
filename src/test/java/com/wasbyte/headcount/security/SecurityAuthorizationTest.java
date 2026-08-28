@@ -9,7 +9,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,10 +21,13 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @Import(SecurityAuthorizationTest.TestEndpointsConfiguration.class)
@@ -29,6 +35,7 @@ class SecurityAuthorizationTest {
 
     @Autowired WebApplicationContext context;
     @Autowired PasswordEncoder passwordEncoder;
+    @MockitoBean CustomUserDetailsService customUserDetailsService;
 
     private MockMvc mockMvc;
 
@@ -45,7 +52,62 @@ class SecurityAuthorizationTest {
     @Test
     void unauthenticatedRequestRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/profile/test"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void loginPageIsPublic() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void loginPageWithLogoutMessageIsPublic() throws Exception {
+        mockMvc.perform(get("/login?logout"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void unauthenticatedIndexRedirectsToLogin() throws Exception {
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void successfulAuthenticationRedirectsToIndex() throws Exception {
+        when(customUserDetailsService.loadUserByUsername("login-user")).thenReturn(
+                User.withUsername("login-user")
+                        .password(passwordEncoder.encode("correct-password"))
+                        .roles("EMPLOYEE")
+                        .build());
+
+        mockMvc.perform(post("/login").with(csrf())
+                        .param("username", "login-user")
+                        .param("password", "correct-password"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/index.html"));
+    }
+
+    @Test
+    void failedAuthenticationRedirectsToLoginError() throws Exception {
+        when(customUserDetailsService.loadUserByUsername("unknown"))
+                .thenThrow(new UsernameNotFoundException("not found"));
+
+        mockMvc.perform(post("/login").with(csrf())
+                        .param("username", "unknown")
+                        .param("password", "wrong-password"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?error"));
+    }
+
+    @Test
+    @WithMockUser(roles = "EMPLOYEE")
+    void authenticatedLogoutRedirectsToLoginLogout() throws Exception {
+        mockMvc.perform(post("/logout").with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?logout"));
     }
 
     @Test

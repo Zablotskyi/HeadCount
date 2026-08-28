@@ -13,6 +13,9 @@ public class CsrfController {
 
     @GetMapping("/csrf")
     public Map<String, String> csrf(CsrfToken token) {
-        return Map.of("token", token.getToken(), "headerName", token.getHeaderName());
+        return Map.of(
+                "token", token.getToken(),
+                "headerName", token.getHeaderName(),
+                "parameterName", token.getParameterName());
     }
 }
