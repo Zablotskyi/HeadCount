@@ -12,6 +12,7 @@ document.getElementById("start-headcount").addEventListener("click", startHeadco
 document.getElementById("scope-select").addEventListener("change", refreshEvent);
 document.getElementById("event-action-back").addEventListener("click", closeEventActionDialog);
 document.getElementById("event-action-confirm").addEventListener("click", executeEventAction);
+document.getElementById("close-participant-details").addEventListener("click", () => document.getElementById("participant-details-dialog").close());
 
 async function loadTree(parent = null, depth = 0) {
     const children = parent === null
@@ -131,6 +132,16 @@ function renderParticipants(participants) {
     const container = document.getElementById("participants"); container.replaceChildren();
     for (const participant of participants) {
         const card = document.createElement("article"); card.className = `participant ${participant.status}`;
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `Переглянути дані учасника ${participant.employeeNameSnapshot}`);
+        card.addEventListener("click", () => openParticipantDetails(participant));
+        card.addEventListener("keydown", event => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openParticipantDetails(participant);
+            }
+        });
         card.innerHTML = `<strong></strong><div class="muted"></div><div class="status"></div><div class="help"></div>`;
         card.querySelector("strong").textContent = participant.employeeNameSnapshot;
         card.querySelector(".muted").textContent = `${participant.resourceNumberSnapshot} · ${participant.organizationPathSnapshot}`;
@@ -138,12 +149,54 @@ function renderParticipants(participants) {
         if (participant.status === "NEED_HELP") card.querySelector(".help").textContent = participant.helpMessage || "Потрібна допомога";
         if (activeEvent?.status === "ACTIVE") {
             const actions = document.createElement("div"); actions.className = "participant-actions";
-            const safe = document.createElement("button"); safe.textContent = "Я в безпеці"; safe.onclick = () => confirm(participant, "safe");
-            const help = document.createElement("button"); help.textContent = "Потрібна допомога"; help.onclick = () => confirm(participant, "need-help");
+            const safe = document.createElement("button"); safe.textContent = "Я в безпеці"; safe.onclick = event => { event.stopPropagation(); confirm(participant, "safe"); };
+            const help = document.createElement("button"); help.textContent = "Потрібна допомога"; help.onclick = event => { event.stopPropagation(); confirm(participant, "need-help"); };
+            safe.addEventListener("keydown", event => event.stopPropagation());
+            help.addEventListener("keydown", event => event.stopPropagation());
             actions.append(safe, help); card.append(actions);
         }
         container.append(card);
     }
+}
+
+async function openParticipantDetails(participant) {
+    if (!activeEvent) return;
+    const dialog = document.getElementById("participant-details-dialog");
+    const content = document.getElementById("participant-details-content");
+    content.className = "muted";
+    content.textContent = "Завантаження...";
+    dialog.showModal();
+    const eventId = activeEvent.id;
+    try {
+        const details = await apiFetch(`/api/headcount/events/${eventId}/participants/${participant.id}`);
+        renderParticipantDetails(details);
+    } catch (error) {
+        dialog.close();
+        showMessage(error.message, "error");
+    }
+}
+
+function renderParticipantDetails(details) {
+    const fields = [
+        ["Ім’я", "firstName"], ["Прізвище", "lastName"], ["Посада", "position"],
+        ["Email", "email"], ["Мобільний телефон", "mobileNumber"], ["Країна", "country"],
+        ["Місто", "city"], ["Офіс", "office"], ["Адреса", "address"]
+    ];
+    const list = document.createElement("dl");
+    list.className = "participant-details";
+    fields.forEach(([label, field]) => {
+        const item = document.createElement("div");
+        item.className = "participant-detail";
+        const term = document.createElement("dt");
+        term.textContent = label;
+        const value = document.createElement("dd");
+        value.textContent = details[field]?.toString().trim() || "—";
+        item.append(term, value);
+        list.append(item);
+    });
+    const content = document.getElementById("participant-details-content");
+    content.className = "";
+    content.replaceChildren(list);
 }
 
 async function confirm(participant, action) {

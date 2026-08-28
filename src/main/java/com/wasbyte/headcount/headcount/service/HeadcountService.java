@@ -82,6 +82,13 @@ public class HeadcountService {
         return participantRepository.findByEventId(eventId);
     }
 
+    public HeadcountParticipant findParticipantDetails(Long eventId, Long participantId) {
+        return participantRepository.findByEventIdAndId(eventId, participantId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "HeadCount participant not found for event " + eventId
+                                + " and participant " + participantId));
+    }
+
     public HeadcountEvent findEventById(Long eventId) {
         return findEvent(eventId);
     }

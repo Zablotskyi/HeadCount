@@ -5,6 +5,7 @@ import com.wasbyte.headcount.headcount.dto.ConfirmSafeRequest;
 import com.wasbyte.headcount.headcount.dto.CreateHeadcountEventRequest;
 import com.wasbyte.headcount.headcount.dto.HeadcountEventResponse;
 import com.wasbyte.headcount.headcount.dto.HeadcountParticipantResponse;
+import com.wasbyte.headcount.headcount.dto.HeadcountParticipantDetailsResponse;
 import com.wasbyte.headcount.headcount.mapper.HeadcountMapper;
 import com.wasbyte.headcount.headcount.service.HeadcountService;
 import com.wasbyte.headcount.security.UserPrincipal;
@@ -64,6 +65,12 @@ public class HeadcountController {
     @GetMapping("/{eventId}/participants")
     public List<HeadcountParticipantResponse> getParticipants(@PathVariable Long eventId) {
         return service.findParticipants(eventId).stream().map(mapper::toResponse).toList();
+    }
+
+    @GetMapping("/{eventId}/participants/{participantId}")
+    public HeadcountParticipantDetailsResponse getParticipantDetails(
+            @PathVariable Long eventId, @PathVariable Long participantId) {
+        return mapper.toDetailsResponse(service.findParticipantDetails(eventId, participantId));
     }
 
     @PostMapping("/{eventId}/participants/{employeeId}/safe")

@@ -14,4 +14,7 @@ public interface HeadcountParticipantRepository extends JpaRepository<HeadcountP
 
     @EntityGraph(attributePaths = {"event", "employee", "confirmedBy"})
     Optional<HeadcountParticipant> findByEventIdAndEmployeeId(Long eventId, Long employeeId);
+
+    @EntityGraph(attributePaths = {"event", "employee"})
+    Optional<HeadcountParticipant> findByEventIdAndId(Long eventId, Long participantId);
 }

@@ -2,6 +2,7 @@ package com.wasbyte.headcount.headcount.service;
 
 import com.wasbyte.headcount.exception.DuplicateResourceException;
 import com.wasbyte.headcount.exception.InvalidOperationException;
+import com.wasbyte.headcount.exception.ResourceNotFoundException;
 import com.wasbyte.headcount.headcount.entity.HeadcountEvent;
 import com.wasbyte.headcount.headcount.entity.HeadcountEventStatus;
 import com.wasbyte.headcount.headcount.entity.HeadcountParticipant;
@@ -106,6 +107,31 @@ class HeadcountServiceTest {
         assertEquals("Jane Smith", participant.getEmployeeNameSnapshot());
         assertEquals("R-20", participant.getResourceNumberSnapshot());
         assertEquals("Organization / Ukraine", participant.getOrganizationPathSnapshot());
+    }
+
+    @Test
+    void participantDetailsAreLoadedOnlyByMatchingEventAndParticipantIds() {
+        HeadcountParticipant participant = org.mockito.Mockito.mock(HeadcountParticipant.class);
+        when(participantRepository.findByEventIdAndId(1L, 30L)).thenReturn(Optional.of(participant));
+
+        assertSame(participant, service.findParticipantDetails(1L, 30L));
+        verify(participantRepository).findByEventIdAndId(1L, 30L);
+    }
+
+    @Test
+    void participantDetailsRejectParticipantFromAnotherEvent() {
+        when(participantRepository.findByEventIdAndId(1L, 40L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.findParticipantDetails(1L, 40L));
+    }
+
+    @Test
+    void participantDetailsRejectUnknownParticipant() {
+        when(participantRepository.findByEventIdAndId(1L, 404L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.findParticipantDetails(1L, 404L));
     }
 
     @Test

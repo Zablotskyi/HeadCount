@@ -2,6 +2,7 @@ package com.wasbyte.headcount.headcount.mapper;
 
 import com.wasbyte.headcount.headcount.dto.HeadcountEventResponse;
 import com.wasbyte.headcount.headcount.dto.HeadcountParticipantResponse;
+import com.wasbyte.headcount.headcount.dto.HeadcountParticipantDetailsResponse;
 import com.wasbyte.headcount.headcount.entity.HeadcountEvent;
 import com.wasbyte.headcount.headcount.entity.HeadcountParticipant;
 import com.wasbyte.headcount.user.entity.User;
@@ -29,6 +30,14 @@ public class HeadcountMapper {
                 participant.getConfirmedBy() == null ? null : participant.getConfirmedBy().getId(),
                 participant.getConfirmationSource(), participant.getHelpMessage(),
                 participant.getHelpRequestedAt(), participant.getVersion());
+    }
+
+    public HeadcountParticipantDetailsResponse toDetailsResponse(HeadcountParticipant participant) {
+        User employee = participant.getEmployee();
+        return new HeadcountParticipantDetailsResponse(
+                participant.getId(), employee.getId(), employee.getFirstName(), employee.getLastName(),
+                employee.getPosition(), employee.getEmail(), employee.getMobileNumber(),
+                employee.getCountry(), employee.getCity(), employee.getOffice(), employee.getAddress());
     }
 
     private String fullName(User user) {

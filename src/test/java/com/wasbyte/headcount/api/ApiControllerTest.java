@@ -381,6 +381,67 @@ class ApiControllerTest {
         }
 
         @Test
+        void authenticatedUserCanGetLimitedParticipantDetails() throws Exception {
+            HeadcountParticipant participant = participant();
+            User employee = participant.getEmployee();
+            employee.setFirstName("Oksana");
+            employee.setLastName("Polishchuk");
+            employee.setPosition("ICT Manager");
+            employee.setEmail("oksana@example.com");
+            employee.setMobileNumber("+380501234567");
+            employee.setCountry("Ukraine");
+            employee.setCity("Chernihiv");
+            employee.setOffice("Chernihiv FO");
+            employee.setAddress("1 Peace Street");
+            when(headcountService.findParticipantDetails(3L, 10L)).thenReturn(participant);
+
+            mockMvc.perform(get("/api/headcount/events/3/participants/10")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.firstName").value("Oksana"))
+                    .andExpect(jsonPath("$.lastName").value("Polishchuk"))
+                    .andExpect(jsonPath("$.position").value("ICT Manager"))
+                    .andExpect(jsonPath("$.email").value("oksana@example.com"))
+                    .andExpect(jsonPath("$.mobileNumber").value("+380501234567"))
+                    .andExpect(jsonPath("$.country").value("Ukraine"))
+                    .andExpect(jsonPath("$.city").value("Chernihiv"))
+                    .andExpect(jsonPath("$.office").value("Chernihiv FO"))
+                    .andExpect(jsonPath("$.address").value("1 Peace Street"))
+                    .andExpect(jsonPath("$.passwordHash").doesNotExist())
+                    .andExpect(jsonPath("$.roles").doesNotExist())
+                    .andExpect(jsonPath("$.enabled").doesNotExist())
+                    .andExpect(jsonPath("$.status").doesNotExist())
+                    .andExpect(jsonPath("$.resourceNumber").doesNotExist())
+                    .andExpect(jsonPath("$.authorizedPersonPhoneNumber").doesNotExist());
+        }
+
+        @Test
+        void participantFromAnotherEventReturns404() throws Exception {
+            when(headcountService.findParticipantDetails(3L, 20L))
+                    .thenThrow(new ResourceNotFoundException("Participant not found"));
+
+            mockMvc.perform(get("/api/headcount/events/3/participants/20")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void unknownParticipantReturns404() throws Exception {
+            when(headcountService.findParticipantDetails(3L, 404L))
+                    .thenThrow(new ResourceNotFoundException("Participant not found"));
+
+            mockMvc.perform(get("/api/headcount/events/3/participants/404")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void unauthenticatedParticipantDetailsRedirectsToLogin() throws Exception {
+            mockMvc.perform(get("/api/headcount/events/3/participants/10"))
+                    .andExpect(status().is3xxRedirection());
+        }
+
+        @Test
         void safeConfirmationUsesPrincipalId() throws Exception {
             HeadcountParticipant participant = participant();
             participant.setStatus(HeadcountParticipantStatus.SAFE);
