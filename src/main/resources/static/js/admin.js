@@ -34,6 +34,31 @@ document.getElementById("role-search").addEventListener("input", renderRoleOptio
 document.getElementById("cancel-role").addEventListener("click", closeRoleDialog);
 document.getElementById("status-form").addEventListener("submit", saveStatus);
 document.getElementById("cancel-status").addEventListener("click", closeStatusDialog);
+document.querySelectorAll('[role="tab"]').forEach(tab => {
+    tab.addEventListener("click", () => selectAdminTab(tab));
+    tab.addEventListener("keydown", switchAdminTabWithKeyboard);
+});
+
+function selectAdminTab(selectedTab) {
+    document.querySelectorAll('[role="tab"]').forEach(tab => {
+        const selected = tab === selectedTab;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
+    });
+}
+
+function switchAdminTabWithKeyboard(event) {
+    const tabs = [...document.querySelectorAll('[role="tab"]')];
+    const currentIndex = tabs.indexOf(event.currentTarget);
+    const nextIndex = event.key === "ArrowRight" ? (currentIndex + 1) % tabs.length
+        : event.key === "ArrowLeft" ? (currentIndex - 1 + tabs.length) % tabs.length
+        : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
+    if (nextIndex == null) return;
+    event.preventDefault();
+    selectAdminTab(tabs[nextIndex]);
+    tabs[nextIndex].focus();
+}
 
 async function loadTree(parent = null, depth = 0) {
     const children = parent === null ? await apiFetch("/api/organization-units/roots") : await apiFetch(`/api/organization-units/${parent}/children`);
