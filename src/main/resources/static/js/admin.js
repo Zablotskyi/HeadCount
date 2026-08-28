@@ -16,12 +16,8 @@ const userStatuses = [
     {value:"ARCHIVED", label:"Архівний", description:"Користувач більше не використовується активно."}
 ];
 document.getElementById("logout").addEventListener("click", logout);
-document.getElementById("all-users").addEventListener("click", loadUsers);
-document.getElementById("search-form").addEventListener("submit", async event => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    await run(() => loadUsers(new FormData(form).get("q")));
-});
+document.getElementById("search-form").addEventListener("submit", event => event.preventDefault());
+document.getElementById("user-search").addEventListener("input", applyUserFilter);
 document.getElementById("unit-form").addEventListener("submit", createUnit);
 document.getElementById("edit-unit-form").addEventListener("submit", updateUnit);
 document.getElementById("cancel-edit-unit").addEventListener("click", () => document.getElementById("edit-unit-dialog").close());
@@ -65,12 +61,36 @@ function renderUnitTable() {
     });
 }
 
-async function loadUsers(query) {
-    users = await apiFetch(query?.trim() ? `/api/users/search?q=${encodeURIComponent(query.trim())}` : "/api/users");
+async function loadUsers() {
+    users = await apiFetch("/api/users");
     populateUserSelects();
     renderUnitTable();
+    applyUserFilter();
+}
+
+function applyUserFilter() {
+    const tokens = document.getElementById("user-search").value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const filteredUsers = tokens.length ? users.filter(user => {
+        const searchableText = [
+            user.firstName, user.lastName, user.username, user.email, user.resourceNumber,
+            user.position, user.organizationUnitName, user.lineManagerName, user.status,
+            ...(user.roles || [])
+        ].filter(value => value != null).join(" ").toLocaleLowerCase();
+        return tokens.every(token => searchableText.includes(token));
+    }) : users;
+    renderUsersTable(filteredUsers);
+}
+
+function renderUsersTable(list) {
     const body = document.getElementById("user-table"); body.replaceChildren();
-    users.forEach(user => {
+    if (!list.length) {
+        const cell = body.insertRow().insertCell();
+        cell.colSpan = 10;
+        cell.textContent = "Користувачів не знайдено";
+        cell.className = "muted";
+        return;
+    }
+    list.forEach(user => {
         const row = body.insertRow();
         appendCells(row, [displayName(user), user.username, user.resourceNumber, user.position || "—", user.organizationUnitName || "—", user.lineManagerName || "—", user.status, user.enabled ? "Так" : "Ні", [...user.roles].join(", ")]);
         const actions = row.insertCell(); actions.className = "actions";
