@@ -6,6 +6,15 @@ let availableRoles = [];
 let currentUser = null;
 let pendingAssignment = null;
 let pendingRoleAction = null;
+let pendingStatusChange = null;
+const userStatuses = [
+    {value:"PENDING_EMAIL_VERIFICATION", label:"Очікує підтвердження email"},
+    {value:"PENDING_APPROVAL", label:"Очікує схвалення"},
+    {value:"ACTIVE", label:"Активний", description:"Користувач може працювати в системі за умови enabled=true."},
+    {value:"REJECTED", label:"Відхилений"},
+    {value:"SUSPENDED", label:"Призупинений", description:"Обліковий запис тимчасово призупинено."},
+    {value:"ARCHIVED", label:"Архівний", description:"Користувач більше не використовується активно."}
+];
 document.getElementById("logout").addEventListener("click", logout);
 document.getElementById("all-users").addEventListener("click", loadUsers);
 document.getElementById("search-form").addEventListener("submit", async event => {
@@ -26,6 +35,8 @@ document.getElementById("assignment-clear").addEventListener("change", selectAss
 document.getElementById("role-form").addEventListener("submit", saveRole);
 document.getElementById("role-search").addEventListener("input", renderRoleOptions);
 document.getElementById("cancel-role").addEventListener("click", closeRoleDialog);
+document.getElementById("status-form").addEventListener("submit", saveStatus);
+document.getElementById("cancel-status").addEventListener("click", closeStatusDialog);
 
 async function loadTree(parent = null, depth = 0) {
     const children = parent === null ? await apiFetch("/api/organization-units/roots") : await apiFetch(`/api/organization-units/${parent}/children`);
@@ -215,7 +226,57 @@ async function saveAssignment(event) {
         showMessage(successMessage, "success");
     });
 }
-async function changeStatus(user) { const value = window.prompt("Status: PENDING_EMAIL_VERIFICATION, PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED, ARCHIVED", user.status); if (value) await mutateUser(user.id, "status", {status:value.trim().toUpperCase()}); }
+function changeStatus(user) {
+    pendingStatusChange = {user, selectedStatus:user.status};
+    document.getElementById("status-dialog-user").textContent = `${displayName(user)} (${user.username})`;
+    const list = document.getElementById("status-list");
+    list.replaceChildren();
+    userStatuses.forEach(status => {
+        const label = document.createElement("label");
+        label.className = "status-option";
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "status";
+        radio.value = status.value;
+        radio.checked = status.value === user.status;
+        radio.addEventListener("change", () => {
+            pendingStatusChange.selectedStatus = status.value;
+            document.getElementById("submit-status").disabled = status.value === user.status;
+        });
+        const text = document.createElement("span");
+        text.className = "status-option-text";
+        text.append(document.createTextNode(status.label));
+        const value = document.createElement("span");
+        value.className = "status-value";
+        value.textContent = status.value;
+        text.append(value);
+        if (status.description) {
+            const description = document.createElement("span");
+            description.className = "status-description";
+            description.textContent = status.description;
+            text.append(description);
+        }
+        label.append(radio, text);
+        list.append(label);
+    });
+    document.getElementById("submit-status").disabled = true;
+    document.getElementById("status-dialog").showModal();
+}
+function closeStatusDialog() {
+    pendingStatusChange = null;
+    document.getElementById("status-dialog").close();
+}
+async function saveStatus(event) {
+    event.preventDefault();
+    if (!pendingStatusChange || pendingStatusChange.selectedStatus === pendingStatusChange.user.status) return;
+    const {user, selectedStatus} = pendingStatusChange;
+    await run(async () => {
+        await apiFetch(`/api/users/${user.id}/status`, {method:"PATCH", body:JSON.stringify({status:selectedStatus})});
+        closeStatusDialog();
+        await loadUsers();
+        showMessage("Статус користувача оновлено", "success");
+    });
+}
 async function mutateUser(id, action, body) { await run(async () => { await apiFetch(`/api/users/${id}/${action}`, {method:"PATCH", body:JSON.stringify(body)}); await loadUsers(); showMessage("Користувача оновлено", "success"); }); }
 function addRole(user) { openRoleDialog(user, "ADD"); }
 function removeRole(user) { openRoleDialog(user, "REMOVE"); }
