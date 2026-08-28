@@ -18,6 +18,7 @@ const userStatuses = [
 document.getElementById("logout").addEventListener("click", logout);
 document.getElementById("search-form").addEventListener("submit", event => event.preventDefault());
 document.getElementById("user-search").addEventListener("input", applyUserFilter);
+document.getElementById("unit-search").addEventListener("input", applyUnitFilter);
 document.getElementById("unit-form").addEventListener("submit", createUnit);
 document.getElementById("edit-unit-form").addEventListener("submit", updateUnit);
 document.getElementById("cancel-edit-unit").addEventListener("click", () => document.getElementById("edit-unit-dialog").close());
@@ -47,12 +48,30 @@ async function loadUnits() {
         const first = select.options[0]; select.replaceChildren(first);
         units.forEach(unit => select.add(new Option(`${"— ".repeat(unit.depth)}${unit.name}`, unit.id)));
     });
-    renderUnitTable();
+    applyUnitFilter();
 }
 
-function renderUnitTable() {
+function applyUnitFilter() {
+    const tokens = document.getElementById("unit-search").value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const filteredUnits = tokens.length ? units.filter(unit => {
+        const searchableText = [
+            unit.name, unit.code, unit.type, unitParentPath(unit), managerName(unit.managerId), unit.sortOrder
+        ].filter(value => value != null).join(" ").toLocaleLowerCase();
+        return tokens.every(token => searchableText.includes(token));
+    }) : units;
+    renderUnitTable(filteredUnits);
+}
+
+function renderUnitTable(list = units) {
     const body = document.getElementById("unit-table"); body.replaceChildren();
-    units.forEach(unit => {
+    if (!list.length) {
+        const cell = body.insertRow().insertCell();
+        cell.colSpan = 8;
+        cell.textContent = "Підрозділів не знайдено";
+        cell.className = "muted";
+        return;
+    }
+    list.forEach(unit => {
         const row = body.insertRow();
         appendCells(row, [`${"— ".repeat(unit.depth)}${unit.name}`, unit.code, unit.type, unitName(unit.parentId), managerName(unit.managerId), unit.sortOrder, unit.active ? "Так" : "Ні"]);
         const actions = row.insertCell(); actions.className = "actions";
@@ -64,7 +83,7 @@ function renderUnitTable() {
 async function loadUsers() {
     users = await apiFetch("/api/users");
     populateUserSelects();
-    renderUnitTable();
+    applyUnitFilter();
     applyUserFilter();
 }
 
@@ -379,6 +398,19 @@ function userOption(user) {
     return {value:user.id, label:`${displayName(user)} (${user.username})`, detail, searchText:[user.firstName, user.lastName, user.username, user.email, user.resourceNumber, user.position, user.organizationUnitName].filter(Boolean).join(" ")};
 }
 function unitName(id) { return id == null ? "—" : units.find(unit => unit.id === id)?.name || "—"; }
+function unitParentPath(unit) {
+    const names = [];
+    const visited = new Set();
+    let parentId = unit.parentId;
+    while (parentId != null && !visited.has(parentId)) {
+        visited.add(parentId);
+        const parent = units.find(candidate => candidate.id === parentId);
+        if (!parent) break;
+        names.unshift(parent.name);
+        parentId = parent.parentId;
+    }
+    return names.join(" ");
+}
 function managerName(id) {
     if (id == null) return "—";
     const manager = users.find(user => user.id === id);
