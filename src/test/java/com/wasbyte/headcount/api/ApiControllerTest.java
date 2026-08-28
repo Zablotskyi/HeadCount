@@ -276,6 +276,33 @@ class ApiControllerTest {
     }
 
     @Nested
+    class RoleApi {
+
+        @Test
+        void adminCanListRolesIncludingHeadcountManager() throws Exception {
+            when(roleService.findAllNames()).thenReturn(List.of("ADMIN", "EMPLOYEE", "HEADCOUNT_MANAGER"));
+
+            mockMvc.perform(get("/api/roles")
+                            .with(user(principal(1L, "ADMIN"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[2]").value("HEADCOUNT_MANAGER"));
+        }
+
+        @Test
+        void employeeCannotListRoles() throws Exception {
+            mockMvc.perform(get("/api/roles")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void unauthenticatedRoleListRedirectsToLogin() throws Exception {
+            mockMvc.perform(get("/api/roles"))
+                    .andExpect(status().is3xxRedirection());
+        }
+    }
+
+    @Nested
     class HeadcountApi {
 
         @Test

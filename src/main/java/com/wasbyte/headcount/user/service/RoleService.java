@@ -8,6 +8,8 @@ import com.wasbyte.headcount.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Transactional(readOnly = true)
 public class RoleService {
@@ -23,6 +25,12 @@ public class RoleService {
     public Role findByName(String name) {
         return roleRepository.findByName(name)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + name));
+    }
+
+    public List<String> findAllNames() {
+        return roleRepository.findAllByOrderByNameAsc().stream()
+                .map(Role::getName)
+                .toList();
     }
 
     @Transactional

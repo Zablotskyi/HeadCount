@@ -2,7 +2,9 @@ import {apiFetch, logout, showMessage} from "/js/api.js";
 
 let units = [];
 let users = [];
+let availableRoles = [];
 let pendingAssignment = null;
+let pendingRoleAction = null;
 document.getElementById("logout").addEventListener("click", logout);
 document.getElementById("all-users").addEventListener("click", loadUsers);
 document.getElementById("search-form").addEventListener("submit", async event => {
@@ -18,6 +20,9 @@ document.getElementById("edit-user-form").addEventListener("submit", updateUser)
 document.getElementById("cancel-edit-user").addEventListener("click", () => document.getElementById("edit-user-dialog").close());
 document.getElementById("assignment-form").addEventListener("submit", saveAssignment);
 document.getElementById("cancel-assignment").addEventListener("click", () => document.getElementById("assignment-dialog").close());
+document.getElementById("role-form").addEventListener("submit", saveRole);
+document.getElementById("role-search").addEventListener("input", renderRoleOptions);
+document.getElementById("cancel-role").addEventListener("click", closeRoleDialog);
 
 async function loadTree(parent = null, depth = 0) {
     const children = parent === null ? await apiFetch("/api/organization-units/roots") : await apiFetch(`/api/organization-units/${parent}/children`);
@@ -60,6 +65,8 @@ async function loadUsers(query) {
         addButton(actions, "+ роль", () => addRole(user)); addButton(actions, "− роль", () => removeRole(user));
     });
 }
+
+async function loadRoles() { availableRoles = await apiFetch("/api/roles"); }
 
 async function createUnit(event) {
     event.preventDefault();
@@ -160,8 +167,68 @@ async function saveAssignment(event) {
 }
 async function changeStatus(user) { const value = window.prompt("Status: PENDING_EMAIL_VERIFICATION, PENDING_APPROVAL, ACTIVE, REJECTED, SUSPENDED, ARCHIVED", user.status); if (value) await mutateUser(user.id, "status", {status:value.trim().toUpperCase()}); }
 async function mutateUser(id, action, body) { await run(async () => { await apiFetch(`/api/users/${id}/${action}`, {method:"PATCH", body:JSON.stringify(body)}); await loadUsers(); showMessage("Користувача оновлено", "success"); }); }
-async function addRole(user) { const role = window.prompt("Роль (наприклад HEADCOUNT_MANAGER):"); if (role) await run(async () => { await apiFetch(`/api/users/${user.id}/roles`, {method:"POST", body:JSON.stringify({role:role.trim().toUpperCase()})}); await loadUsers(); }); }
-async function removeRole(user) { const role = window.prompt(`Role для видалення (${[...user.roles].join(", ")}):`); if (role) await run(async () => { await apiFetch(`/api/users/${user.id}/roles/${encodeURIComponent(role.trim().toUpperCase())}`, {method:"DELETE"}); await loadUsers(); }); }
+function addRole(user) { openRoleDialog(user, "ADD"); }
+function removeRole(user) { openRoleDialog(user, "REMOVE"); }
+function openRoleDialog(user, mode) {
+    pendingRoleAction = {user, mode};
+    document.getElementById("role-dialog-title").textContent = mode === "ADD" ? "Додати роль" : "Видалити роль";
+    document.getElementById("role-dialog-user").textContent = `${displayName(user)} (${user.username})`;
+    const search = document.getElementById("role-search");
+    search.value = "";
+    const submit = document.getElementById("submit-role");
+    submit.textContent = mode === "ADD" ? "Додати" : "Видалити роль";
+    renderRoleOptions();
+    document.getElementById("role-dialog").showModal();
+    search.focus();
+}
+function renderRoleOptions() {
+    if (!pendingRoleAction) return;
+    const {user, mode} = pendingRoleAction;
+    const assigned = new Set(user.roles);
+    const choices = mode === "ADD" ? availableRoles.filter(role => !assigned.has(role)) : [...assigned].sort();
+    const query = document.getElementById("role-search").value.trim().toLocaleLowerCase();
+    const filtered = choices.filter(role => role.toLocaleLowerCase().includes(query));
+    const list = document.getElementById("role-list");
+    list.replaceChildren();
+    document.getElementById("submit-role").disabled = true;
+    if (!filtered.length) {
+        const empty = document.createElement("div");
+        empty.className = "role-empty";
+        empty.textContent = query ? "Ролей не знайдено" : mode === "ADD" ? "Усі доступні ролі вже призначені" : "У користувача немає ролей для видалення";
+        list.append(empty);
+        return;
+    }
+    filtered.forEach(role => {
+        const label = document.createElement("label");
+        label.className = "role-option";
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "role";
+        radio.value = role;
+        radio.addEventListener("change", () => { document.getElementById("submit-role").disabled = false; });
+        label.append(radio, document.createTextNode(role));
+        list.append(label);
+    });
+}
+function closeRoleDialog() {
+    pendingRoleAction = null;
+    document.getElementById("role-dialog").close();
+}
+async function saveRole(event) {
+    event.preventDefault();
+    if (!pendingRoleAction) return;
+    const role = new FormData(event.currentTarget).get("role");
+    if (!role) return;
+    const {user, mode} = pendingRoleAction;
+    await run(async () => {
+        const url = `/api/users/${user.id}/roles${mode === "REMOVE" ? `/${encodeURIComponent(role)}` : ""}`;
+        const options = mode === "ADD" ? {method:"POST", body:JSON.stringify({role})} : {method:"DELETE"};
+        await apiFetch(url, options);
+        closeRoleDialog();
+        await loadUsers();
+        showMessage(`${mode === "ADD" ? "Роль додано" : "Роль видалено"}. Зміни ролей набудуть чинності після повторного входу користувача.`, "success");
+    });
+}
 
 function appendCells(row, values) { values.forEach(value => { const cell = row.insertCell(); cell.textContent = value ?? ""; }); }
 function addButton(container, label, action) { const button = document.createElement("button"); button.type="button"; button.textContent=label; button.addEventListener("click", action); container.append(button); }
@@ -188,4 +255,4 @@ function descendantIdsOf(unit) {
 function numberOrNull(value) { return value === "" || value == null ? null : Number(value); }
 async function run(action) { try { await action(); } catch (error) { showMessage(error.message, "error"); } }
 
-run(async () => { await loadUnits(); await loadUsers(); });
+run(async () => { await loadRoles(); await loadUnits(); await loadUsers(); });
