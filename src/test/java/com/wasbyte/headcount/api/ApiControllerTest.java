@@ -430,6 +430,30 @@ class ApiControllerTest {
         }
 
         @Test
+        void activeSummaryReturnsMinimalDataForMultipleEvents() throws Exception {
+            HeadcountEvent first = summaryEvent(12L, 45L);
+            HeadcountEvent second = summaryEvent(13L, 78L);
+            when(headcountService.findActiveEvents()).thenReturn(List.of(first, second));
+
+            mockMvc.perform(get("/api/headcount/events/active-summary")
+                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].eventId").value(12))
+                    .andExpect(jsonPath("$[0].organizationUnitId").value(45))
+                    .andExpect(jsonPath("$[1].eventId").value(13))
+                    .andExpect(jsonPath("$[1].organizationUnitId").value(78))
+                    .andExpect(jsonPath("$[0].participants").doesNotExist())
+                    .andExpect(jsonPath("$[0].email").doesNotExist())
+                    .andExpect(jsonPath("$[0].helpMessage").doesNotExist());
+        }
+
+        @Test
+        void unauthenticatedActiveSummaryIsProtected() throws Exception {
+            mockMvc.perform(get("/api/headcount/events/active-summary"))
+                    .andExpect(status().is3xxRedirection());
+        }
+
+        @Test
         void headcountManagerCanCreateEventAndPrincipalIdIsUsed() throws Exception {
             HeadcountEvent event = event();
             when(headcountService.createEvent("Alarm", "Test", 10L, 77L)).thenReturn(event);
@@ -707,6 +731,15 @@ class ApiControllerTest {
         event.setStartedBy(userEntity("starter"));
         event.setCreatedAt(LocalDateTime.now());
         event.setUpdatedAt(LocalDateTime.now());
+        return event;
+    }
+
+    private HeadcountEvent summaryEvent(Long eventId, Long organizationUnitId) {
+        HeadcountEvent event = mock(HeadcountEvent.class);
+        OrganizationUnit unit = mock(OrganizationUnit.class);
+        when(event.getId()).thenReturn(eventId);
+        when(event.getScopeOrganizationUnit()).thenReturn(unit);
+        when(unit.getId()).thenReturn(organizationUnitId);
         return event;
     }
 

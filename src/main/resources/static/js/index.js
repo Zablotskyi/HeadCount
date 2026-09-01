@@ -4,10 +4,12 @@ const headcountLifecycleRoles = new Set(["ADMIN", "HEADCOUNT_MANAGER"]);
 let currentUser;
 let units = [];
 let activeEvent;
+let activeHeadcountUnitIds = new Set();
+let activeHeadcountAncestorIds = new Set();
 let pendingEventAction = null;
 
 document.getElementById("logout").addEventListener("click", logout);
-document.getElementById("refresh").addEventListener("click", refreshEvent);
+document.getElementById("refresh").addEventListener("click", refreshIndex);
 document.getElementById("start-headcount").addEventListener("click", startHeadcount);
 document.getElementById("scope-select").addEventListener("change", refreshEvent);
 document.getElementById("event-action-back").addEventListener("click", closeEventActionDialog);
@@ -29,18 +31,59 @@ async function loadTree(parent = null, depth = 0) {
 function renderUnits() {
     const tree = document.getElementById("organization-tree");
     const select = document.getElementById("scope-select");
+    const selectedScopeId = select.value;
     tree.replaceChildren(); select.replaceChildren();
     for (const unit of units) {
         const node = document.createElement("div");
         node.className = "unit"; node.style.setProperty("--depth", unit.depth);
-        node.textContent = `${unit.name} (${unit.type})${unit.active ? "" : " — неактивна"}`;
+        if (activeHeadcountUnitIds.has(unit.id)) {
+            node.classList.add("headcount-active");
+            const badge = document.createElement("span");
+            badge.className = "headcount-active-badge";
+            badge.textContent = "HeadCount активний";
+            node.append(badge);
+        } else if (activeHeadcountAncestorIds.has(unit.id)) {
+            node.classList.add("headcount-descendant-active");
+            node.title = "Активний HeadCount є в дочірньому підрозділі";
+            node.setAttribute("aria-label", `${unit.name}: активний HeadCount є в дочірньому підрозділі`);
+        }
+        node.prepend(`${unit.name} (${unit.type})${unit.active ? "" : " — неактивна"}`);
         tree.append(node);
         const option = new Option(`${"— ".repeat(unit.depth)}${unit.name}`, unit.id);
         select.add(option);
     }
-    if (currentUser.organizationUnitId && units.some(unit => unit.id === currentUser.organizationUnitId)) {
+    if (selectedScopeId && units.some(unit => String(unit.id) === selectedScopeId)) {
+        select.value = selectedScopeId;
+    } else if (currentUser.organizationUnitId && units.some(unit => unit.id === currentUser.organizationUnitId)) {
         select.value = String(currentUser.organizationUnitId);
     }
+}
+
+async function refreshActiveSummary() {
+    const summary = await apiFetch("/api/headcount/events/active-summary");
+    activeHeadcountUnitIds = new Set(summary.map(item => item.organizationUnitId));
+    activeHeadcountAncestorIds = findActiveAncestorIds(units, activeHeadcountUnitIds);
+    renderUnits();
+}
+
+function findActiveAncestorIds(allUnits, activeUnitIds) {
+    const byId = new Map(allUnits.map(unit => [unit.id, unit]));
+    const ancestorIds = new Set();
+    for (const activeUnitId of activeUnitIds) {
+        let parentId = byId.get(activeUnitId)?.parentId;
+        const visited = new Set();
+        while (parentId != null && !visited.has(parentId)) {
+            visited.add(parentId);
+            ancestorIds.add(parentId);
+            parentId = byId.get(parentId)?.parentId;
+        }
+    }
+    return ancestorIds;
+}
+
+async function refreshIndex() {
+    await refreshActiveSummary();
+    await refreshEvent();
 }
 
 async function refreshEvent() {
@@ -120,10 +163,10 @@ async function executeEventAction() {
         await apiFetch(`/api/headcount/events/${eventId}/${action}`, {method:"POST"});
         closeEventActionDialog();
         showMessage(action === "close" ? "HeadCount закрито" : "HeadCount скасовано", "success");
-        await refreshEvent();
+        await refreshIndex();
     } catch (error) {
         closeEventActionDialog();
-        await refreshEvent().catch(() => {});
+        await refreshIndex().catch(() => {});
         showMessage(error.message, "error");
     }
 }
@@ -223,7 +266,7 @@ async function startHeadcount() {
         const scopeOrganizationUnitId = Number(document.getElementById("scope-select").value);
         const title = document.getElementById("event-title").value.trim();
         activeEvent = await apiFetch("/api/headcount/events", {method: "POST", body: JSON.stringify({title, description: "Оголошено через web interface", scopeOrganizationUnitId})});
-        showMessage("HeadCount оголошено", "success"); await refreshEvent();
+        showMessage("HeadCount оголошено", "success"); await refreshIndex();
     } catch (error) { showMessage(error.message, "error"); }
 }
 
@@ -239,7 +282,7 @@ async function init() {
         document.getElementById("current-user").textContent = `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.username;
         document.getElementById("admin-link").hidden = !currentUser.roles.includes("ADMIN");
         document.getElementById("start-headcount").hidden = !canManageHeadcount();
-        units = await loadTree(); renderUnits(); await refreshEvent();
+        units = await loadTree(); await refreshIndex();
     } catch (error) { showMessage(error.message, "error"); }
 }
 

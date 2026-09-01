@@ -1,6 +1,7 @@
 package com.wasbyte.headcount.headcount.controller;
 
 import com.wasbyte.headcount.headcount.dto.ConfirmNeedHelpRequest;
+import com.wasbyte.headcount.headcount.dto.ActiveHeadcountSummaryResponse;
 import com.wasbyte.headcount.headcount.dto.ConfirmSafeRequest;
 import com.wasbyte.headcount.headcount.dto.CreateHeadcountEventRequest;
 import com.wasbyte.headcount.headcount.dto.HeadcountEventResponse;
@@ -60,6 +61,14 @@ public class HeadcountController {
                 .map(mapper::toResponse)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/active-summary")
+    public List<ActiveHeadcountSummaryResponse> getActiveSummary() {
+        return service.findActiveEvents().stream()
+                .map(event -> new ActiveHeadcountSummaryResponse(
+                        event.getId(), event.getScopeOrganizationUnit().getId()))
+                .toList();
     }
 
     @GetMapping("/{eventId}/participants")

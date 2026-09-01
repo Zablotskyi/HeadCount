@@ -104,6 +104,10 @@ public class HeadcountService {
                 HeadcountEventStatus.ACTIVE, scopeOrganizationUnitId);
     }
 
+    public List<HeadcountEvent> findActiveEvents() {
+        return eventRepository.findByStatus(HeadcountEventStatus.ACTIVE);
+    }
+
     @Transactional
     public HeadcountParticipant confirmSafe(Long eventId, Long employeeId,
                                             Long confirmedById, String confirmationSource) {

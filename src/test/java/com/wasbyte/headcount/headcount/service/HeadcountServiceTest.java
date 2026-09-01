@@ -139,6 +139,27 @@ class HeadcountServiceTest {
     }
 
     @Test
+    void activeSummaryReturnsOnlyActiveEvents() {
+        HeadcountEvent active = event(HeadcountEventStatus.ACTIVE);
+        when(eventRepository.findByStatus(HeadcountEventStatus.ACTIVE)).thenReturn(List.of(active));
+
+        List<HeadcountEvent> result = service.findActiveEvents();
+
+        assertEquals(List.of(active), result);
+        verify(eventRepository).findByStatus(HeadcountEventStatus.ACTIVE);
+    }
+
+    @Test
+    void multipleActiveEventsReturned() {
+        HeadcountEvent first = event(HeadcountEventStatus.ACTIVE);
+        HeadcountEvent second = event(HeadcountEventStatus.ACTIVE);
+        when(eventRepository.findByStatus(HeadcountEventStatus.ACTIVE))
+                .thenReturn(List.of(first, second));
+
+        assertEquals(List.of(first, second), service.findActiveEvents());
+    }
+
+    @Test
     void confirmSafeChangesStatus() {
         HeadcountParticipant participant = participant(HeadcountEventStatus.ACTIVE);
         arrangeConfirmation(participant);
