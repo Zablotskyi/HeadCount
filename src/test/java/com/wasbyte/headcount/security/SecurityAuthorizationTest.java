@@ -69,6 +69,12 @@ class SecurityAuthorizationTest {
     }
 
     @Test
+    void registerPageIsPublic() throws Exception {
+        mockMvc.perform(get("/register"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void unauthenticatedIndexRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/index.html"))
                 .andExpect(status().is3xxRedirection())

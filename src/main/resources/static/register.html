@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Реєстрація — HeadCount</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <style>
+        :root{font-family:system-ui,sans-serif;color:#1f2937;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}header{padding:1rem 2rem;background:#172554;color:white}header h1{margin:0}main{width:min(1100px,calc(100% - 2rem));margin:2rem auto}.card{padding:1.5rem;background:white;border-radius:.7rem;box-shadow:0 12px 30px #0f172a1f}.card>h2{margin-top:0}.form-section{margin:0 0 1.25rem;padding:1rem;border:1px solid #d1d5db;border-radius:.5rem}.form-section legend{padding:0 .4rem;font-weight:700;color:#172554}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.field{display:grid;align-content:start;gap:.35rem}.field label{font-weight:600}.field input,.field button{width:100%;padding:.65rem;border:1px solid #9ca3af;border-radius:.35rem;font:inherit}.field button{text-align:left;background:white;cursor:pointer}.required::after{content:" *";color:#b91c1c}.actions{display:flex;justify-content:flex-end;gap:.7rem}.primary,.secondary{padding:.7rem 1rem;border:0;border-radius:.35rem;font:inherit;font-weight:600;cursor:pointer}.primary{background:#172554;color:white}.secondary{background:#e5e7eb;color:#1f2937}.message{padding:.75rem;margin-bottom:1rem;border-radius:.4rem}.message.error{background:#fee2e2;color:#991b1b}.message.success{background:#dcfce7;color:#166534}.success-panel{text-align:center}.success-panel a{display:inline-block;margin-top:1rem;text-decoration:none}.muted{color:#6b7280;font-size:.9rem}dialog{width:min(620px,calc(100% - 2rem));border:0;border-radius:.65rem;padding:1.25rem;box-shadow:0 20px 50px #0f172a55}dialog::backdrop{background:#0f172a88}.unit-list{display:grid;gap:.35rem;max-height:50vh;overflow:auto;margin:1rem 0}.unit-row{display:flex;gap:.65rem;align-items:flex-start;padding:.65rem;border:1px solid #d1d5db;border-radius:.4rem;cursor:pointer}.unit-row:has(input:checked){border-color:#172554;background:#eff6ff}.unit-row span{overflow-wrap:anywhere}.dialog-search{width:100%;padding:.65rem;border:1px solid #9ca3af;border-radius:.35rem;font:inherit}@media(max-width:760px){.form-grid{grid-template-columns:1fr}main{margin:1rem auto}.card{padding:1rem}}
+    </style>
+</head>
+<body>
+<header><h1>HeadCount</h1></header>
+<main><section class="card" aria-labelledby="register-title">
+    <h2 id="register-title">Створення облікового запису</h2>
+    <div id="message-container" class="message" hidden></div>
+    <form id="registration-form">
+        <fieldset class="form-section"><legend>Обліковий запис</legend><div class="form-grid">
+            <div class="field"><label class="required" for="username">Ім’я користувача</label><input id="username" name="username" maxlength="100" autocomplete="username" required></div>
+            <div class="field"><label class="required" for="password">Пароль</label><input id="password" name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div>
+            <div class="field"><label class="required" for="password-confirmation">Підтвердження пароля</label><input id="password-confirmation" name="passwordConfirmation" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div>
+        </div></fieldset>
+        <fieldset class="form-section"><legend>Основні дані</legend><div class="form-grid">
+            <div class="field"><label class="required" for="resource-number">Ресурсний №</label><input id="resource-number" name="resourceNumber" maxlength="100" required></div>
+            <div class="field"><label class="required" for="first-name">Ім’я</label><input id="first-name" name="firstName" maxlength="100" autocomplete="given-name" required></div>
+            <div class="field"><label class="required" for="last-name">Прізвище</label><input id="last-name" name="lastName" maxlength="100" autocomplete="family-name" required></div>
+            <div class="field"><label for="position">Посада</label><input id="position" name="position" maxlength="150"></div>
+        </div></fieldset>
+        <fieldset class="form-section"><legend>Контакти</legend><div class="form-grid">
+            <div class="field"><label class="required" for="email">Email</label><input id="email" name="email" type="email" maxlength="255" autocomplete="email" required></div>
+            <div class="field"><label for="mobile-number">Мобільний телефон</label><input id="mobile-number" name="mobileNumber" maxlength="50" autocomplete="tel"></div>
+            <div class="field"><label for="authorized-phone">Телефон уповноваженої особи</label><input id="authorized-phone" name="authorizedPersonPhoneNumber" maxlength="50"></div>
+        </div></fieldset>
+        <fieldset class="form-section"><legend>Місце роботи</legend><div class="form-grid">
+            <div class="field"><label for="country">Країна</label><input id="country" name="country" maxlength="100" autocomplete="country-name"></div>
+            <div class="field"><label for="city">Місто</label><input id="city" name="city" maxlength="100" autocomplete="address-level2"></div>
+            <div class="field"><label for="office">Офіс</label><input id="office" name="office" maxlength="150"></div>
+            <div class="field"><label class="required" for="choose-unit">Організаційний підрозділ</label><button id="choose-unit" type="button">Вибрати підрозділ</button><input id="organization-unit-id" name="organizationUnitId" type="hidden"></div>
+            <div class="field"><label for="address">Адреса</label><input id="address" name="address" maxlength="500" autocomplete="street-address"></div>
+        </div></fieldset>
+        <div class="actions"><a class="secondary" href="/login">Назад до входу</a><button id="register-submit" class="primary" type="submit">Надіслати реєстрацію</button></div>
+    </form>
+    <section id="registration-success" class="success-panel" hidden>
+        <h3>Реєстрацію успішно надіслано.</h3>
+        <p>Ваш обліковий запис очікує підтвердження адміністратора.</p>
+        <a class="primary" href="/login">Перейти до входу</a>
+    </section>
+</section></main>
+<dialog id="unit-dialog" aria-labelledby="unit-dialog-title">
+    <h2 id="unit-dialog-title">Вибір підрозділу</h2>
+    <label class="field" for="unit-search">Пошук підрозділу</label>
+    <input id="unit-search" class="dialog-search" type="search" placeholder="Пошук підрозділу..." autocomplete="off">
+    <div id="unit-list" class="unit-list"></div>
+    <p id="unit-empty" class="muted" hidden>Підрозділів не знайдено</p>
+    <div class="actions"><button id="unit-cancel" class="secondary" type="button">Скасувати</button><button id="unit-save" class="primary" type="button" disabled>Вибрати</button></div>
+</dialog>
+<script type="module" src="/js/register.js"></script>
+</body>
+</html>

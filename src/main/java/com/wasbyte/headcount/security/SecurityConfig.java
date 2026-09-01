@@ -2,6 +2,7 @@ package com.wasbyte.headcount.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,10 +23,13 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
-                                "/login", "/login.html", "/api/csrf", "/error", "/favicon.ico", "/favicon.png",
+                                "/login", "/login.html", "/register", "/register.html",
+                                "/api/csrf", "/error", "/favicon.ico", "/favicon.png",
                                 "/css/**", "/js/**", "/images/**",
                                 "/actuator/health"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/registration").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/registration/organization-units").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .requestMatchers("/admin.html", "/admin/**").hasRole("ADMIN")
                         .requestMatchers("/security/**").hasAnyRole(

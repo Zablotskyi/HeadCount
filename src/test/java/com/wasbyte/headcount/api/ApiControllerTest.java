@@ -11,6 +11,9 @@ import com.wasbyte.headcount.headcount.service.HeadcountService;
 import com.wasbyte.headcount.organization.entity.OrganizationUnit;
 import com.wasbyte.headcount.organization.entity.OrganizationUnitType;
 import com.wasbyte.headcount.organization.service.OrganizationUnitService;
+import com.wasbyte.headcount.registration.dto.RegistrationOrganizationUnitResponse;
+import com.wasbyte.headcount.registration.dto.RegistrationResponse;
+import com.wasbyte.headcount.registration.service.RegistrationService;
 import com.wasbyte.headcount.security.UserPrincipal;
 import com.wasbyte.headcount.user.entity.Role;
 import com.wasbyte.headcount.user.entity.User;
@@ -63,6 +66,7 @@ class ApiControllerTest {
     @MockitoBean UserService userService;
     @MockitoBean RoleService roleService;
     @MockitoBean HeadcountService headcountService;
+    @MockitoBean RegistrationService registrationService;
 
     private MockMvc mockMvc;
 
@@ -77,6 +81,76 @@ class ApiControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.headerName").value("X-CSRF-TOKEN"));
+    }
+
+    @Nested
+    class RegistrationApi {
+
+        private static final String VALID_REGISTRATION = """
+                {"username":"new.employee","password":"password123",
+                 "passwordConfirmation":"password123","resourceNumber":"R-100",
+                 "firstName":"New","lastName":"Employee","email":"new@example.com",
+                 "timeZone":"Europe/Kyiv","organizationUnitId":5}
+                """;
+
+        @Test
+        void unauthenticatedRegistrationWithCsrfReturns201() throws Exception {
+            when(registrationService.register(any())).thenReturn(
+                    new RegistrationResponse(10L, "new.employee", UserStatus.PENDING_APPROVAL));
+
+            mockMvc.perform(post("/api/registration").with(csrf())
+                            .contentType("application/json").content(VALID_REGISTRATION))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.username").value("new.employee"))
+                    .andExpect(jsonPath("$.status").value("PENDING_APPROVAL"))
+                    .andExpect(jsonPath("$.password").doesNotExist())
+                    .andExpect(jsonPath("$.passwordHash").doesNotExist())
+                    .andExpect(jsonPath("$.roles").doesNotExist())
+                    .andExpect(jsonPath("$.enabled").doesNotExist());
+        }
+
+        @Test
+        void registrationWithoutCsrfIsForbidden() throws Exception {
+            mockMvc.perform(post("/api/registration")
+                            .contentType("application/json").content(VALID_REGISTRATION))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        void publicRegistrationUnitsAreAvailableWithoutAuthentication() throws Exception {
+            when(registrationService.findActiveOrganizationUnits()).thenReturn(List.of(
+                    new RegistrationOrganizationUnitResponse(
+                            5L, "ICT", "ICT", OrganizationUnitType.UNIT, 4L, 3)));
+
+            mockMvc.perform(get("/api/registration/organization-units"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].name").value("ICT"))
+                    .andExpect(jsonPath("$[0].managerId").doesNotExist());
+        }
+
+        @Test
+        void duplicateRegistrationReturns409() throws Exception {
+            when(registrationService.register(any()))
+                    .thenThrow(new DuplicateResourceException("Username already exists"));
+
+            mockMvc.perform(post("/api/registration").with(csrf())
+                            .contentType("application/json").content(VALID_REGISTRATION))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        void invalidRegistrationReturns400() throws Exception {
+            mockMvc.perform(post("/api/registration").with(csrf())
+                            .contentType("application/json")
+                            .content("{\"username\":\"\",\"password\":\"short\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void usersApiRemainsProtected() throws Exception {
+            mockMvc.perform(get("/api/users"))
+                    .andExpect(status().is3xxRedirection());
+        }
     }
 
     @Nested
