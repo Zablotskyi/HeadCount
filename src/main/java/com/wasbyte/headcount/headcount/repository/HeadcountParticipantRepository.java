@@ -9,10 +9,14 @@ import java.util.Optional;
 
 public interface HeadcountParticipantRepository extends JpaRepository<HeadcountParticipant, Long> {
 
-    @EntityGraph(attributePaths = {"event", "employee", "confirmedBy"})
+    @EntityGraph(attributePaths = {
+            "event", "employee", "employee.organizationUnit", "employee.lineManager", "confirmedBy"
+    })
     List<HeadcountParticipant> findByEventId(Long eventId);
 
-    @EntityGraph(attributePaths = {"event", "employee", "confirmedBy"})
+    @EntityGraph(attributePaths = {
+            "event", "employee", "employee.organizationUnit", "employee.lineManager", "confirmedBy"
+    })
     Optional<HeadcountParticipant> findByEventIdAndEmployeeId(Long eventId, Long employeeId);
 
     @EntityGraph(attributePaths = {"event", "employee"})

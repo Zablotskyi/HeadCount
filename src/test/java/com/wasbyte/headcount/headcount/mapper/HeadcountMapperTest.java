@@ -4,6 +4,7 @@ import com.wasbyte.headcount.headcount.dto.HeadcountParticipantResponse;
 import com.wasbyte.headcount.headcount.entity.HeadcountEvent;
 import com.wasbyte.headcount.headcount.entity.HeadcountParticipant;
 import com.wasbyte.headcount.headcount.entity.HeadcountParticipantStatus;
+import com.wasbyte.headcount.organization.entity.OrganizationUnit;
 import com.wasbyte.headcount.user.entity.User;
 import org.junit.jupiter.api.Test;
 
@@ -48,6 +49,32 @@ class HeadcountMapperTest {
         assertNull(response.confirmedById());
         assertNull(response.confirmedByFirstName());
         assertNull(response.confirmedByLastName());
+    }
+
+    @Test
+    void responseContainsOrganizationUnitAndLineManagerIds() {
+        User lineManager = user(20L, "Alice", "Manager");
+        User employee = user(10L, "Bob", "Employee");
+        OrganizationUnit unit = mock(OrganizationUnit.class);
+        when(unit.getId()).thenReturn(30L);
+        when(employee.getOrganizationUnit()).thenReturn(unit);
+        when(employee.getLineManager()).thenReturn(lineManager);
+
+        HeadcountParticipantResponse response = mapper.toResponse(
+                participant(employee, null, HeadcountParticipantStatus.PENDING));
+
+        assertEquals(30L, response.organizationUnitId());
+        assertEquals(20L, response.lineManagerId());
+    }
+
+    @Test
+    void responseHandlesMissingLineManager() {
+        User employee = user(10L, "Bob", "Employee");
+
+        HeadcountParticipantResponse response = mapper.toResponse(
+                participant(employee, null, HeadcountParticipantStatus.PENDING));
+
+        assertNull(response.lineManagerId());
     }
 
     private HeadcountParticipant participant(User employee, User confirmedBy,

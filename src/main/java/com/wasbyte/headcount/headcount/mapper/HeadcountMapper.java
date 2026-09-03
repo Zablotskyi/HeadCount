@@ -23,8 +23,12 @@ public class HeadcountMapper {
 
     public HeadcountParticipantResponse toResponse(HeadcountParticipant participant) {
         User confirmedBy = participant.getConfirmedBy();
+        User employee = participant.getEmployee();
         return new HeadcountParticipantResponse(
-                participant.getId(), participant.getEvent().getId(), participant.getEmployee().getId(),
+                participant.getId(), participant.getEvent().getId(), employee.getId(),
+                employee.getFirstName(), employee.getLastName(), employee.getPosition(),
+                employee.getOrganizationUnit() == null ? null : employee.getOrganizationUnit().getId(),
+                employee.getLineManager() == null ? null : employee.getLineManager().getId(),
                 participant.getEmployeeNameSnapshot(), participant.getResourceNumberSnapshot(),
                 participant.getOrganizationPathSnapshot(), participant.getStatus(),
                 participant.getConfirmedAt(),

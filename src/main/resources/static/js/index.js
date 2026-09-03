@@ -6,6 +6,10 @@ let units = [];
 let activeEvent;
 let activeHeadcountUnitIds = new Set();
 let activeHeadcountAncestorIds = new Set();
+let activeHeadcountByUnitId = new Map();
+const expandedUnitIds = new Set();
+const participantCache = new Map();
+const participantLoadPromises = new Map();
 let pendingEventAction = null;
 
 document.getElementById("logout").addEventListener("click", logout);
@@ -28,42 +32,139 @@ async function loadTree(parent = null, depth = 0) {
     return result;
 }
 
-function renderUnits() {
-    const tree = document.getElementById("organization-tree");
+function renderScopeSelect() {
     const select = document.getElementById("scope-select");
-    const selectedScopeId = select.value;
-    tree.replaceChildren(); select.replaceChildren();
+    select.replaceChildren();
     for (const unit of units) {
-        const node = document.createElement("div");
-        node.className = "unit"; node.style.setProperty("--depth", unit.depth);
-        if (activeHeadcountUnitIds.has(unit.id)) {
-            node.classList.add("headcount-active");
-            const badge = document.createElement("span");
-            badge.className = "headcount-active-badge";
-            badge.textContent = "HeadCount активний";
-            node.append(badge);
-        } else if (activeHeadcountAncestorIds.has(unit.id)) {
-            node.classList.add("headcount-descendant-active");
-            node.title = "Активний HeadCount є в дочірньому підрозділі";
-            node.setAttribute("aria-label", `${unit.name}: активний HeadCount є в дочірньому підрозділі`);
-        }
-        node.prepend(`${unit.name} (${unit.type})${unit.active ? "" : " — неактивна"}`);
-        tree.append(node);
-        const option = new Option(`${"— ".repeat(unit.depth)}${unit.name}`, unit.id);
-        select.add(option);
+        select.add(new Option(`${"— ".repeat(unit.depth)}${unit.name}`, unit.id));
     }
-    if (selectedScopeId && units.some(unit => String(unit.id) === selectedScopeId)) {
-        select.value = selectedScopeId;
-    } else if (currentUser.organizationUnitId && units.some(unit => unit.id === currentUser.organizationUnitId)) {
+    if (currentUser.organizationUnitId && units.some(unit => unit.id === currentUser.organizationUnitId)) {
         select.value = String(currentUser.organizationUnitId);
     }
 }
 
+function renderOrganizationTree() {
+    const tree = document.getElementById("organization-tree");
+    tree.replaceChildren();
+    const byParentId = new Map();
+    const byId = new Map(units.map(unit => [unit.id, unit]));
+    for (const unit of units) {
+        const parentId = byId.has(unit.parentId) ? unit.parentId : null;
+        const children = byParentId.get(parentId) || [];
+        children.push(unit);
+        byParentId.set(parentId, children);
+    }
+    const rendered = new Set();
+    for (const root of byParentId.get(null) || []) {
+        tree.append(renderOrganizationUnit(root, byParentId, rendered));
+    }
+}
+
+function renderOrganizationUnit(unit, byParentId, rendered) {
+    rendered.add(unit.id);
+    const wrapper = document.createElement("section");
+    wrapper.className = "organization-unit";
+    const expanded = expandedUnitIds.has(unit.id);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "unit";
+    button.setAttribute("aria-expanded", String(expanded));
+    button.addEventListener("click", () => toggleOrganizationUnit(unit));
+
+    const marker = document.createElement("span");
+    marker.className = "unit-marker";
+    marker.textContent = expanded ? "▼" : "▶";
+    const label = document.createElement("span");
+    label.textContent = `${unit.name} (${unit.type})${unit.active ? "" : " — неактивна"}`;
+    button.append(marker, label);
+    if (activeHeadcountUnitIds.has(unit.id)) {
+        button.classList.add("headcount-active");
+        const badge = document.createElement("span");
+        badge.className = "headcount-active-badge";
+        badge.textContent = "HeadCount активний";
+        button.append(badge);
+    } else if (activeHeadcountAncestorIds.has(unit.id)) {
+        button.classList.add("headcount-descendant-active");
+        button.title = "Активний HeadCount є в дочірньому підрозділі";
+        button.setAttribute("aria-label", `${unit.name}: активний HeadCount є в дочірньому підрозділі`);
+    }
+    wrapper.append(button);
+
+    if (expanded) {
+        const content = document.createElement("div");
+        content.className = "unit-content";
+        content.append(renderUnitParticipants(unit));
+        const children = document.createElement("div");
+        children.className = "unit-children";
+        for (const child of byParentId.get(unit.id) || []) {
+            if (!rendered.has(child.id)) children.append(renderOrganizationUnit(child, byParentId, rendered));
+        }
+        content.append(children);
+        wrapper.append(content);
+    }
+    return wrapper;
+}
+
+async function toggleOrganizationUnit(unit) {
+    if (expandedUnitIds.delete(unit.id)) {
+        renderOrganizationTree();
+        return;
+    }
+    expandedUnitIds.add(unit.id);
+    renderOrganizationTree();
+    const eventId = findActiveEventIdForUnit(unit.id);
+    if (eventId != null) {
+        try {
+            await loadParticipantsForEvent(eventId);
+        } catch (error) {
+            showMessage(error.message, "error");
+        }
+        renderOrganizationTree();
+    }
+}
+
+function findActiveEventIdForUnit(unitId) {
+    const byId = new Map(units.map(unit => [unit.id, unit]));
+    let currentId = unitId;
+    const visited = new Set();
+    while (currentId != null && !visited.has(currentId)) {
+        visited.add(currentId);
+        if (activeHeadcountByUnitId.has(currentId)) return activeHeadcountByUnitId.get(currentId);
+        currentId = byId.get(currentId)?.parentId;
+    }
+    return null;
+}
+
+async function loadParticipantsForEvent(eventId) {
+    if (participantCache.has(eventId)) return participantCache.get(eventId);
+    if (!participantLoadPromises.has(eventId)) {
+        const request = apiFetch(`/api/headcount/events/${eventId}/participants`)
+            .then(participants => {
+                participantCache.set(eventId, participants);
+                return participants;
+            })
+            .finally(() => participantLoadPromises.delete(eventId));
+        participantLoadPromises.set(eventId, request);
+    }
+    return participantLoadPromises.get(eventId);
+}
+
 async function refreshActiveSummary() {
     const summary = await apiFetch("/api/headcount/events/active-summary");
+    activeHeadcountByUnitId = new Map(summary.map(item => [item.organizationUnitId, item.eventId]));
     activeHeadcountUnitIds = new Set(summary.map(item => item.organizationUnitId));
     activeHeadcountAncestorIds = findActiveAncestorIds(units, activeHeadcountUnitIds);
-    renderUnits();
+    participantCache.clear();
+    participantLoadPromises.clear();
+    renderOrganizationTree();
+
+    const expandedEventIds = new Set([...expandedUnitIds]
+        .map(findActiveEventIdForUnit)
+        .filter(eventId => eventId != null));
+    if (expandedEventIds.size > 0) {
+        await Promise.all([...expandedEventIds].map(loadParticipantsForEvent));
+        renderOrganizationTree();
+    }
 }
 
 function findActiveAncestorIds(allUnits, activeUnitIds) {
@@ -95,13 +196,11 @@ async function refreshEvent() {
         const empty = document.createElement("strong");
         empty.textContent = "Активної події для вибраної області немає";
         summary.append(empty);
-        document.getElementById("participants").replaceChildren();
         document.getElementById("start-headcount").hidden = !canManageHeadcount();
         return;
     }
     renderActiveEvent();
     document.getElementById("start-headcount").hidden = true;
-    renderParticipants(await apiFetch(`/api/headcount/events/${activeEvent.id}/participants`));
 }
 
 function renderActiveEvent() {
@@ -171,23 +270,111 @@ async function executeEventAction() {
     }
 }
 
-function renderParticipants(participants) {
-    const container = document.getElementById("participants"); container.replaceChildren();
+function renderUnitParticipants(unit) {
+    const container = document.createElement("div");
+    container.className = "unit-participants";
+    const eventId = findActiveEventIdForUnit(unit.id);
+    if (eventId == null) {
+        container.append(emptyParticipantMessage());
+        return container;
+    }
+    if (!participantCache.has(eventId)) {
+        const loading = document.createElement("span");
+        loading.className = "muted";
+        loading.textContent = "Завантаження учасників...";
+        container.append(loading);
+        return container;
+    }
+    const participants = participantCache.get(eventId)
+        .filter(participant => participant.organizationUnitId === unit.id);
+    if (participants.length === 0) {
+        container.append(emptyParticipantMessage());
+        return container;
+    }
+    const hierarchy = buildParticipantHierarchy(participants, unit.managerId);
+    renderParticipantTree(container, hierarchy, eventId);
+    return container;
+}
+
+function emptyParticipantMessage() {
+    const empty = document.createElement("span");
+    empty.className = "muted";
+    empty.textContent = "Немає учасників активного HeadCount";
+    return empty;
+}
+
+function buildParticipantHierarchy(participants, unitManagerId) {
+    const byEmployeeId = new Map(participants.map(participant => [participant.employeeId, participant]));
+    const childrenByManagerId = new Map();
+    const roots = [];
     for (const participant of participants) {
+        const managerIsVisible = participant.lineManagerId != null
+            && byEmployeeId.has(participant.lineManagerId);
+        const isUnitManager = participant.employeeId === unitManagerId;
+        if (!managerIsVisible || isUnitManager) {
+            roots.push(participant);
+        } else {
+            const children = childrenByManagerId.get(participant.lineManagerId) || [];
+            children.push(participant);
+            childrenByManagerId.set(participant.lineManagerId, children);
+        }
+    }
+    roots.sort(participantComparator);
+    for (const children of childrenByManagerId.values()) children.sort(participantComparator);
+    if (unitManagerId != null) {
+        roots.sort((left, right) => Number(right.employeeId === unitManagerId)
+            - Number(left.employeeId === unitManagerId) || participantComparator(left, right));
+    }
+    return {participants: [...participants].sort(participantComparator), roots, childrenByManagerId};
+}
+
+function renderParticipantTree(container, hierarchy, eventId) {
+    const visited = new Set();
+    for (const root of hierarchy.roots) {
+        const node = renderParticipantNode(root, hierarchy.childrenByManagerId, visited, eventId, 0);
+        if (node) container.append(node);
+    }
+    for (const participant of hierarchy.participants) {
+        if (visited.has(participant.employeeId)) continue;
+        const node = renderParticipantNode(participant, hierarchy.childrenByManagerId, visited, eventId, 0);
+        if (node) container.append(node);
+    }
+}
+
+function renderParticipantNode(participant, childrenByManagerId, visited, eventId, depth) {
+    if (visited.has(participant.employeeId)) return null;
+    visited.add(participant.employeeId);
+    const node = document.createElement("div");
+    node.className = "participant-node";
+    node.style.setProperty("--employee-depth", depth);
+    node.append(renderParticipantCard(participant, eventId));
+    for (const child of childrenByManagerId.get(participant.employeeId) || []) {
+        const childNode = renderParticipantNode(child, childrenByManagerId, visited, eventId, depth + 1);
+        if (childNode) node.append(childNode);
+    }
+    return node;
+}
+
+function renderParticipantCard(participant, eventId) {
         const card = document.createElement("article"); card.className = `participant ${participant.status}`;
         card.tabIndex = 0;
         card.setAttribute("role", "button");
         card.setAttribute("aria-label", `Переглянути дані учасника ${participant.employeeNameSnapshot}`);
-        card.addEventListener("click", () => openParticipantDetails(participant));
+        card.addEventListener("click", event => {
+            event.stopPropagation();
+            openParticipantDetails(participant, eventId);
+        });
         card.addEventListener("keydown", event => {
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                openParticipantDetails(participant);
+                event.stopPropagation();
+                openParticipantDetails(participant, eventId);
             }
         });
         card.innerHTML = `<strong></strong><div class="muted"></div><div class="status"></div><div class="confirmer muted"></div><div class="help"></div>`;
-        card.querySelector("strong").textContent = participant.employeeNameSnapshot;
-        card.querySelector(".muted").textContent = `${participant.resourceNumberSnapshot} · ${participant.organizationPathSnapshot}`;
+        card.querySelector("strong").textContent = participantName(participant);
+        card.querySelector(".muted").textContent = [participant.position, participant.resourceNumberSnapshot]
+            .filter(Boolean).join(" · ");
         card.querySelector(".status").textContent = `${participant.status}${participant.confirmedAt ? ` · ${formatTime(participant.confirmedAt)}` : ""}`;
         if (participant.status !== "PENDING" && participant.confirmedById != null
                 && participant.confirmedById !== participant.employeeId) {
@@ -196,26 +383,32 @@ function renderParticipants(participants) {
             card.querySelector(".confirmer").textContent = `Підтвердив: ${confirmerName}`;
         }
         if (participant.status === "NEED_HELP") card.querySelector(".help").textContent = participant.helpMessage || "Потрібна допомога";
-        if (activeEvent?.status === "ACTIVE" && canConfirmParticipant(participant)) {
+        if (canConfirmParticipant(participant)) {
             const actions = document.createElement("div"); actions.className = "participant-actions";
-            const safe = document.createElement("button"); safe.textContent = "Я в безпеці"; safe.onclick = event => { event.stopPropagation(); confirm(participant, "safe"); };
-            const help = document.createElement("button"); help.textContent = "Потрібна допомога"; help.onclick = event => { event.stopPropagation(); confirm(participant, "need-help"); };
+            const safe = document.createElement("button"); safe.textContent = "Я в безпеці"; safe.onclick = event => { event.stopPropagation(); confirm(participant, eventId, "safe"); };
+            const help = document.createElement("button"); help.textContent = "Потрібна допомога"; help.onclick = event => { event.stopPropagation(); confirm(participant, eventId, "need-help"); };
             safe.addEventListener("keydown", event => event.stopPropagation());
             help.addEventListener("keydown", event => event.stopPropagation());
             actions.append(safe, help); card.append(actions);
         }
-        container.append(card);
-    }
+        return card;
 }
 
-async function openParticipantDetails(participant) {
-    if (!activeEvent) return;
+function participantName(participant) {
+    return [participant.employeeFirstName, participant.employeeLastName]
+        .map(value => value?.trim()).filter(Boolean).join(" ") || participant.employeeNameSnapshot;
+}
+
+function participantComparator(left, right) {
+    return participantName(left).localeCompare(participantName(right), "uk", {sensitivity: "base"});
+}
+
+async function openParticipantDetails(participant, eventId) {
     const dialog = document.getElementById("participant-details-dialog");
     const content = document.getElementById("participant-details-content");
     content.className = "muted";
     content.textContent = "Завантаження...";
     dialog.showModal();
-    const eventId = activeEvent.id;
     try {
         const details = await apiFetch(`/api/headcount/events/${eventId}/participants/${participant.id}`);
         renderParticipantDetails(details);
@@ -248,7 +441,7 @@ function renderParticipantDetails(details) {
     content.replaceChildren(list);
 }
 
-async function confirm(participant, action) {
+async function confirm(participant, eventId, action) {
     try {
         const body = {confirmationSource: "WEB"};
         if (action === "need-help") {
@@ -256,8 +449,11 @@ async function confirm(participant, action) {
             if (!message?.trim()) return;
             body.helpMessage = message.trim();
         }
-        await apiFetch(`/api/headcount/events/${activeEvent.id}/participants/${participant.employeeId}/${action}`, {method: "POST", body: JSON.stringify(body)});
-        showMessage("Статус оновлено", "success"); await refreshEvent();
+        await apiFetch(`/api/headcount/events/${eventId}/participants/${participant.employeeId}/${action}`, {method: "POST", body: JSON.stringify(body)});
+        participantCache.delete(eventId);
+        showMessage("Статус оновлено", "success");
+        await loadParticipantsForEvent(eventId);
+        renderOrganizationTree();
     } catch (error) { showMessage(error.message, "error"); }
 }
 
@@ -272,7 +468,23 @@ async function startHeadcount() {
 
 function canManageHeadcount() { return currentUser?.roles.some(role => headcountLifecycleRoles.has(role)) ?? false; }
 function canConfirmParticipant(participant) {
-    return participant.employeeId === currentUser?.id || canManageHeadcount();
+    return participant.employeeId === currentUser?.id
+        || canManageHeadcount()
+        || isInCurrentUsersManagedBranch(participant.organizationUnitId);
+}
+function isInCurrentUsersManagedBranch(organizationUnitId) {
+    if (organizationUnitId == null || currentUser?.id == null) return false;
+    const byId = new Map(units.map(unit => [unit.id, unit]));
+    let currentId = organizationUnitId;
+    const visited = new Set();
+    while (currentId != null && !visited.has(currentId)) {
+        visited.add(currentId);
+        const unit = byId.get(currentId);
+        if (!unit) return false;
+        if (unit.managerId === currentUser.id) return true;
+        currentId = unit.parentId;
+    }
+    return false;
 }
 function formatTime(value) { return value ? new Intl.DateTimeFormat("uk-UA", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}).format(new Date(`${value}Z`)) : ""; }
 
@@ -282,7 +494,7 @@ async function init() {
         document.getElementById("current-user").textContent = `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.username;
         document.getElementById("admin-link").hidden = !currentUser.roles.includes("ADMIN");
         document.getElementById("start-headcount").hidden = !canManageHeadcount();
-        units = await loadTree(); await refreshIndex();
+        units = await loadTree(); renderScopeSelect(); await refreshIndex();
     } catch (error) { showMessage(error.message, "error"); }
 }
 
