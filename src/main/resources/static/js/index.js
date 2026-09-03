@@ -1,6 +1,7 @@
 import {apiFetch, logout, showMessage} from "/js/api.js";
 
 const headcountLifecycleRoles = new Set(["ADMIN", "HEADCOUNT_MANAGER"]);
+const applicationTimeZone = "Europe/Kyiv";
 let currentUser;
 let units = [];
 let activeEvent;
@@ -486,7 +487,44 @@ function isInCurrentUsersManagedBranch(organizationUnitId) {
     }
     return false;
 }
-function formatTime(value) { return value ? new Intl.DateTimeFormat("uk-UA", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}).format(new Date(`${value}Z`)) : ""; }
+function formatTime(value) {
+    if (!value) return "";
+    const instant = parseBackendTimestamp(value);
+    if (!instant || Number.isNaN(instant.getTime())) return "";
+    const options = {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"};
+    try {
+        return new Intl.DateTimeFormat("uk-UA", {...options, timeZone: currentUser?.timeZone || applicationTimeZone}).format(instant);
+    } catch (error) {
+        if (!(error instanceof RangeError)) throw error;
+        return new Intl.DateTimeFormat("uk-UA", {...options, timeZone: applicationTimeZone}).format(instant);
+    }
+}
+
+function parseBackendTimestamp(value) {
+    if (/Z$|[+-]\d{2}:\d{2}$/.test(value)) return new Date(value);
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/.exec(value);
+    if (!match) return new Date(value);
+    const [, year, month, day, hour, minute, second, fraction = ""] = match;
+    const wallClockUtc = Date.UTC(
+        Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second),
+        Number(fraction.padEnd(3, "0").slice(0, 3))
+    );
+    let instant = wallClockUtc;
+    const sourceFormatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: applicationTimeZone, year:"numeric", month:"2-digit", day:"2-digit",
+        hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23"
+    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const parts = Object.fromEntries(sourceFormatter.formatToParts(new Date(instant))
+            .filter(part => part.type !== "literal").map(part => [part.type, part.value]));
+        const representedWallClock = Date.UTC(
+            Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour),
+            Number(parts.minute), Number(parts.second), Number(fraction.padEnd(3, "0").slice(0, 3))
+        );
+        instant += wallClockUtc - representedWallClock;
+    }
+    return new Date(instant);
+}
 
 async function init() {
     try {

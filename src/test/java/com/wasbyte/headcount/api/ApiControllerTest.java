@@ -247,6 +247,7 @@ class ApiControllerTest {
             when(found.getUsername()).thenReturn("jsmith");
             when(found.getFirstName()).thenReturn("John");
             when(found.getLastName()).thenReturn("Smith");
+            when(found.getTimeZone()).thenReturn("Europe/Kyiv");
             when(found.getRoles()).thenReturn(new HashSet<>(Set.of(employee)));
             when(userService.findById(77L)).thenReturn(found);
 
@@ -254,6 +255,7 @@ class ApiControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(77))
                     .andExpect(jsonPath("$.username").value("jsmith"))
+                    .andExpect(jsonPath("$.timeZone").value("Europe/Kyiv"))
                     .andExpect(jsonPath("$.roles[0]").value("EMPLOYEE"));
             verify(userService).findById(77L);
         }

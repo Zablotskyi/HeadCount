@@ -63,6 +63,7 @@ public class UserController {
         User user = userService.findById(principal.getUserId());
         return new CurrentUserResponse(
                 user.getId(), user.getUsername(), user.getFirstName(), user.getLastName(),
+                user.getTimeZone(),
                 user.getOrganizationUnit() == null ? null : user.getOrganizationUnit().getId(),
                 user.getRoles().stream().map(role -> role.getName()).collect(java.util.stream.Collectors.toSet()));
     }

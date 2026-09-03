@@ -7,6 +7,7 @@ public record CurrentUserResponse(
         String username,
         String firstName,
         String lastName,
+        String timeZone,
         Long organizationUnitId,
         Set<String> roles) {
 }
