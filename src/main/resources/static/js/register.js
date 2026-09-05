@@ -8,12 +8,22 @@ const form = document.getElementById("registration-form");
 const unitDialog = document.getElementById("unit-dialog");
 const unitSearch = document.getElementById("unit-search");
 const unitSave = document.getElementById("unit-save");
+const password = document.getElementById("password");
+const passwordConfirmation = document.getElementById("password-confirmation");
 
 document.getElementById("choose-unit").addEventListener("click", openUnitDialog);
 document.getElementById("unit-cancel").addEventListener("click", () => unitDialog.close());
 unitSave.addEventListener("click", saveUnitSelection);
 unitSearch.addEventListener("input", renderUnits);
+password.addEventListener("input", validatePasswordConfirmation);
+passwordConfirmation.addEventListener("input", validatePasswordConfirmation);
 form.addEventListener("submit", submitRegistration);
+
+function validatePasswordConfirmation() {
+    passwordConfirmation.setCustomValidity(
+        password.value === passwordConfirmation.value ? "" : "Паролі не збігаються"
+    );
+}
 
 async function loadUnits() {
     units = await apiFetch("/api/registration/organization-units");
@@ -67,9 +77,7 @@ function saveUnitSelection() {
 
 async function submitRegistration(event) {
     event.preventDefault();
-    const password = document.getElementById("password");
-    const confirmation = document.getElementById("password-confirmation");
-    confirmation.setCustomValidity(password.value === confirmation.value ? "" : "Паролі не збігаються");
+    validatePasswordConfirmation();
     if (!form.reportValidity()) return;
     if (selectedUnitId == null) {
         showMessage("Виберіть організаційний підрозділ", "error");
@@ -85,6 +93,7 @@ async function submitRegistration(event) {
     try {
         await apiFetch("/api/registration", {method: "POST", body: JSON.stringify(payload)});
         form.reset();
+        passwordConfirmation.setCustomValidity("");
         form.hidden = true;
         document.getElementById("message-container").hidden = true;
         document.getElementById("registration-success").hidden = false;
