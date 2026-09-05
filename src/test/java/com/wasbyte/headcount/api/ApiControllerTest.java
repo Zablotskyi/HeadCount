@@ -31,7 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -425,7 +425,9 @@ class ApiControllerTest {
 
             mockMvc.perform(get("/api/headcount/events/active?scopeOrganizationUnitId=10")
                             .with(user(principal(7L, "EMPLOYEE"))))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("ACTIVE"))
+                    .andExpect(jsonPath("$.createdAt").value("2026-09-03T14:20:00Z"));
             mockMvc.perform(get("/api/headcount/events/active?scopeOrganizationUnitId=11")
                             .with(user(principal(7L, "EMPLOYEE"))))
                     .andExpect(status().isNoContent());
@@ -473,12 +475,15 @@ class ApiControllerTest {
 
         @Test
         void participantListReturns200() throws Exception {
-            when(headcountService.findParticipants(3L)).thenReturn(List.of(participant()));
+            HeadcountParticipant participant = participant();
+            participant.setConfirmedAt(Instant.parse("2026-09-03T14:20:00Z"));
+            when(headcountService.findParticipants(3L)).thenReturn(List.of(participant));
 
             mockMvc.perform(get("/api/headcount/events/3/participants")
-                            .with(user(principal(7L, "EMPLOYEE"))))
+                    .with(user(principal(7L, "EMPLOYEE"))))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].status").value("PENDING"));
+                    .andExpect(jsonPath("$[0].status").value("PENDING"))
+                    .andExpect(jsonPath("$[0].confirmedAt").value("2026-09-03T14:20:00Z"));
         }
 
         @Test
@@ -729,10 +734,10 @@ class ApiControllerTest {
         event.setDescription("Test");
         event.setStatus(HeadcountEventStatus.ACTIVE);
         event.setScopeOrganizationUnit(unit("Kyiv", "KYIV"));
-        event.setStartedAt(LocalDateTime.now());
+        event.setStartedAt(Instant.parse("2026-09-03T14:20:00Z"));
         event.setStartedBy(userEntity("starter"));
-        event.setCreatedAt(LocalDateTime.now());
-        event.setUpdatedAt(LocalDateTime.now());
+        event.setCreatedAt(Instant.parse("2026-09-03T14:20:00Z"));
+        event.setUpdatedAt(Instant.parse("2026-09-03T14:20:00Z"));
         return event;
     }
 

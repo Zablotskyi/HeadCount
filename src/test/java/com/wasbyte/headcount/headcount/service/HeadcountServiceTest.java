@@ -69,6 +69,9 @@ class HeadcountServiceTest {
         assertSame(HeadcountEventStatus.ACTIVE, event.getStatus());
         assertSame(root, event.getScopeOrganizationUnit());
         assertSame(starter, event.getStartedBy());
+        assertNotNull(event.getStartedAt());
+        assertNotNull(event.getCreatedAt());
+        assertNotNull(event.getUpdatedAt());
         verify(eventRepository).save(event);
     }
 
@@ -168,6 +171,7 @@ class HeadcountServiceTest {
 
         assertSame(HeadcountParticipantStatus.SAFE, participant.getStatus());
         assertNotNull(participant.getConfirmedAt());
+        assertNotNull(participant.getUpdatedAt());
         assertSame(starter, participant.getConfirmedBy());
     }
 
@@ -182,6 +186,8 @@ class HeadcountServiceTest {
         assertSame(starter, participant.getConfirmedBy());
         assertEquals("Medical help", participant.getHelpMessage());
         assertNotNull(participant.getHelpRequestedAt());
+        assertNotNull(participant.getConfirmedAt());
+        assertNotNull(participant.getUpdatedAt());
     }
 
     @Test
@@ -301,6 +307,7 @@ class HeadcountServiceTest {
 
         assertSame(HeadcountEventStatus.CLOSED, event.getStatus());
         assertNotNull(event.getClosedAt());
+        assertNotNull(event.getUpdatedAt());
         assertSame(starter, event.getClosedBy());
     }
 
@@ -314,6 +321,7 @@ class HeadcountServiceTest {
 
         assertSame(HeadcountEventStatus.CANCELLED, event.getStatus());
         assertNotNull(event.getCancelledAt());
+        assertNotNull(event.getUpdatedAt());
         assertSame(starter, event.getCancelledBy());
     }
 

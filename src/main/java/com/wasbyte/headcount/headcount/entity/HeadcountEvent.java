@@ -14,7 +14,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "headcount_events")
@@ -39,31 +39,31 @@ public class HeadcountEvent {
     private OrganizationUnit scopeOrganizationUnit;
 
     @Column(name = "started_at", nullable = false)
-    private LocalDateTime startedAt;
+    private Instant startedAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "started_by", nullable = false)
     private User startedBy;
 
     @Column(name = "closed_at")
-    private LocalDateTime closedAt;
+    private Instant closedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "closed_by")
     private User closedBy;
 
     @Column(name = "cancelled_at")
-    private LocalDateTime cancelledAt;
+    private Instant cancelledAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cancelled_by")
     private User cancelledBy;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public HeadcountEvent() {
     }
@@ -77,20 +77,20 @@ public class HeadcountEvent {
     public void setStatus(HeadcountEventStatus status) { this.status = status; }
     public OrganizationUnit getScopeOrganizationUnit() { return scopeOrganizationUnit; }
     public void setScopeOrganizationUnit(OrganizationUnit value) { this.scopeOrganizationUnit = value; }
-    public LocalDateTime getStartedAt() { return startedAt; }
-    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
+    public Instant getStartedAt() { return startedAt; }
+    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
     public User getStartedBy() { return startedBy; }
     public void setStartedBy(User startedBy) { this.startedBy = startedBy; }
-    public LocalDateTime getClosedAt() { return closedAt; }
-    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
+    public Instant getClosedAt() { return closedAt; }
+    public void setClosedAt(Instant closedAt) { this.closedAt = closedAt; }
     public User getClosedBy() { return closedBy; }
     public void setClosedBy(User closedBy) { this.closedBy = closedBy; }
-    public LocalDateTime getCancelledAt() { return cancelledAt; }
-    public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
+    public Instant getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(Instant cancelledAt) { this.cancelledAt = cancelledAt; }
     public User getCancelledBy() { return cancelledBy; }
     public void setCancelledBy(User cancelledBy) { this.cancelledBy = cancelledBy; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

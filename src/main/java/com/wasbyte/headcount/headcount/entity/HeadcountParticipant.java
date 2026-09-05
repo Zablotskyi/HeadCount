@@ -15,7 +15,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -53,7 +53,7 @@ public class HeadcountParticipant {
     private HeadcountParticipantStatus status;
 
     @Column(name = "confirmed_at")
-    private LocalDateTime confirmedAt;
+    private Instant confirmedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "confirmed_by")
@@ -66,17 +66,17 @@ public class HeadcountParticipant {
     private String helpMessage;
 
     @Column(name = "help_requested_at")
-    private LocalDateTime helpRequestedAt;
+    private Instant helpRequestedAt;
 
     @Version
     @Column(nullable = false)
     private long version;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public HeadcountParticipant() {
     }
@@ -94,19 +94,19 @@ public class HeadcountParticipant {
     public void setOrganizationPathSnapshot(String value) { this.organizationPathSnapshot = value; }
     public HeadcountParticipantStatus getStatus() { return status; }
     public void setStatus(HeadcountParticipantStatus status) { this.status = status; }
-    public LocalDateTime getConfirmedAt() { return confirmedAt; }
-    public void setConfirmedAt(LocalDateTime confirmedAt) { this.confirmedAt = confirmedAt; }
+    public Instant getConfirmedAt() { return confirmedAt; }
+    public void setConfirmedAt(Instant confirmedAt) { this.confirmedAt = confirmedAt; }
     public User getConfirmedBy() { return confirmedBy; }
     public void setConfirmedBy(User confirmedBy) { this.confirmedBy = confirmedBy; }
     public String getConfirmationSource() { return confirmationSource; }
     public void setConfirmationSource(String confirmationSource) { this.confirmationSource = confirmationSource; }
     public String getHelpMessage() { return helpMessage; }
     public void setHelpMessage(String helpMessage) { this.helpMessage = helpMessage; }
-    public LocalDateTime getHelpRequestedAt() { return helpRequestedAt; }
-    public void setHelpRequestedAt(LocalDateTime value) { this.helpRequestedAt = value; }
+    public Instant getHelpRequestedAt() { return helpRequestedAt; }
+    public void setHelpRequestedAt(Instant value) { this.helpRequestedAt = value; }
     public long getVersion() { return version; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

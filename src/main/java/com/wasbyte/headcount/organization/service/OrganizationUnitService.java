@@ -9,7 +9,7 @@ import com.wasbyte.headcount.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +49,7 @@ public class OrganizationUnitService {
         if (unit.getParent() != null) {
             unit.setParent(findById(unit.getParent().getId()));
         }
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         unit.setCreatedAt(now);
         unit.setUpdatedAt(now);
         return organizationUnitRepository.save(unit);
@@ -62,7 +62,7 @@ public class OrganizationUnitService {
         unit.setCode(changes.getCode());
         unit.setType(changes.getType());
         unit.setSortOrder(changes.getSortOrder());
-        unit.setUpdatedAt(LocalDateTime.now());
+        unit.setUpdatedAt(Instant.now());
         return unit;
     }
 
@@ -72,7 +72,7 @@ public class OrganizationUnitService {
         OrganizationUnit parent = parentId == null ? null : findById(parentId);
         validateParent(unit, parent);
         unit.setParent(parent);
-        unit.setUpdatedAt(LocalDateTime.now());
+        unit.setUpdatedAt(Instant.now());
         return unit;
     }
 
@@ -82,7 +82,7 @@ public class OrganizationUnitService {
         User manager = managerId == null ? null : userRepository.findById(managerId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + managerId));
         unit.setManager(manager);
-        unit.setUpdatedAt(LocalDateTime.now());
+        unit.setUpdatedAt(Instant.now());
         return unit;
     }
 
@@ -90,7 +90,7 @@ public class OrganizationUnitService {
     public OrganizationUnit setActive(Long unitId, boolean active) {
         OrganizationUnit unit = findById(unitId);
         unit.setActive(active);
-        unit.setUpdatedAt(LocalDateTime.now());
+        unit.setUpdatedAt(Instant.now());
         return unit;
     }
 

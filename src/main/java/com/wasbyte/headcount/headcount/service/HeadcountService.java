@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,7 +58,7 @@ public class HeadcountService {
             throw new DuplicateResourceException("An active HeadCount event already exists for this scope");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         HeadcountEvent event = new HeadcountEvent();
         event.setTitle(title);
         event.setDescription(description);
@@ -115,10 +115,10 @@ public class HeadcountService {
         ensureEventActive(participant.getEvent());
         User confirmedBy = authorizeParticipantConfirmation(participant, confirmedById);
         participant.setStatus(HeadcountParticipantStatus.SAFE);
-        participant.setConfirmedAt(LocalDateTime.now());
+        participant.setConfirmedAt(Instant.now());
         participant.setConfirmedBy(confirmedBy);
         participant.setConfirmationSource(confirmationSource);
-        participant.setUpdatedAt(LocalDateTime.now());
+        participant.setUpdatedAt(Instant.now());
         return participant;
     }
 
@@ -132,7 +132,7 @@ public class HeadcountService {
         HeadcountParticipant participant = findParticipant(eventId, employeeId);
         ensureEventActive(participant.getEvent());
         User confirmedBy = authorizeParticipantConfirmation(participant, confirmedById);
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         participant.setStatus(HeadcountParticipantStatus.NEED_HELP);
         participant.setConfirmedAt(now);
         participant.setConfirmedBy(confirmedBy);
@@ -147,7 +147,7 @@ public class HeadcountService {
     public HeadcountEvent closeEvent(Long eventId, Long closedById) {
         HeadcountEvent event = findEvent(eventId);
         ensureEventActive(event);
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         event.setStatus(HeadcountEventStatus.CLOSED);
         event.setClosedAt(now);
         event.setClosedBy(findUser(closedById));
@@ -159,7 +159,7 @@ public class HeadcountService {
     public HeadcountEvent cancelEvent(Long eventId, Long cancelledById) {
         HeadcountEvent event = findEvent(eventId);
         ensureEventActive(event);
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         event.setStatus(HeadcountEventStatus.CANCELLED);
         event.setCancelledAt(now);
         event.setCancelledBy(findUser(cancelledById));
@@ -167,7 +167,7 @@ public class HeadcountService {
         return event;
     }
 
-    private HeadcountParticipant createParticipant(HeadcountEvent event, User employee, LocalDateTime now) {
+    private HeadcountParticipant createParticipant(HeadcountEvent event, User employee, Instant now) {
         HeadcountParticipant participant = new HeadcountParticipant();
         participant.setEvent(event);
         participant.setEmployee(employee);

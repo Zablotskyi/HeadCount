@@ -2,7 +2,7 @@ package com.wasbyte.headcount.user.dto;
 
 import com.wasbyte.headcount.user.entity.UserStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 public record UserResponse(
@@ -13,6 +13,6 @@ public record UserResponse(
         String position, Long lineManagerId, String lineManagerName,
         String address, String authorizedPersonPhoneNumber, String timeZone,
         UserStatus status, boolean enabled, boolean emailVerified,
-        Set<String> roles, LocalDateTime lastLoginAt,
-        LocalDateTime createdAt, LocalDateTime updatedAt) {
+        Set<String> roles, Instant lastLoginAt,
+        Instant createdAt, Instant updatedAt) {
 }

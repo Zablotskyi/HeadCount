@@ -12,7 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -63,7 +63,7 @@ public class RestExceptionHandler {
             HttpStatus status, String message, HttpServletRequest request,
             Map<String, String> validationErrors) {
         return ResponseEntity.status(status).body(new ApiErrorResponse(
-                LocalDateTime.now(), status.value(), status.getReasonPhrase(),
+                Instant.now(), status.value(), status.getReasonPhrase(),
                 message, request.getRequestURI(), validationErrors));
     }
 }

@@ -11,7 +11,7 @@ import com.wasbyte.headcount.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
@@ -72,7 +72,7 @@ public class UserService {
         assertEncodedPassword(user.getPasswordHash());
         resolveRelationships(user);
 
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
         if (user.getStatus() == null) {
@@ -100,7 +100,7 @@ public class UserService {
         user.setAddress(profile.getAddress());
         user.setAuthorizedPersonPhoneNumber(profile.getAuthorizedPersonPhoneNumber());
         user.setTimeZone(profile.getTimeZone());
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(Instant.now());
         return user;
     }
 
@@ -110,7 +110,7 @@ public class UserService {
         OrganizationUnit unit = organizationUnitId == null ? null : organizationUnitRepository.findById(organizationUnitId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization unit not found: " + organizationUnitId));
         user.setOrganizationUnit(unit);
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(Instant.now());
         return user;
     }
 
@@ -123,7 +123,7 @@ public class UserService {
         User manager = managerId == null ? null : findById(managerId);
         validateManagerChain(user, manager);
         user.setLineManager(manager);
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(Instant.now());
         return user;
     }
 
@@ -132,7 +132,7 @@ public class UserService {
         User user = findById(userId);
         user.setEnabled(active);
         user.setStatus(active ? UserStatus.ACTIVE : UserStatus.SUSPENDED);
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(Instant.now());
         return user;
     }
 
@@ -143,7 +143,7 @@ public class UserService {
         }
         User user = findById(userId);
         user.setStatus(status);
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(Instant.now());
         return user;
     }
 

@@ -2,7 +2,7 @@ package com.wasbyte.headcount.headcount.dto;
 
 import com.wasbyte.headcount.headcount.entity.HeadcountParticipantStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record HeadcountParticipantResponse(
         Long id, Long eventId, Long employeeId,
@@ -10,7 +10,7 @@ public record HeadcountParticipantResponse(
         Long organizationUnitId, Long lineManagerId,
         String employeeNameSnapshot, String resourceNumberSnapshot,
         String organizationPathSnapshot, HeadcountParticipantStatus status,
-        LocalDateTime confirmedAt, Long confirmedById,
+        Instant confirmedAt, Long confirmedById,
         String confirmedByFirstName, String confirmedByLastName, String confirmationSource,
-        String helpMessage, LocalDateTime helpRequestedAt, long version) {
+        String helpMessage, Instant helpRequestedAt, long version) {
 }
